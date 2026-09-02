@@ -40,6 +40,12 @@ for app in dist/*.app; do
   "$LSREGISTER" -u "$app" >/dev/null 2>&1 || true
   "$LSREGISTER" -f "/Applications/$name"
   echo "installed /Applications/$name"
+  # The site apps in dist/ are only build output; remove them so nothing can
+  # launch a stale copy. LinkRouter stays because router/test.sh runs it.
+  case "$name" in
+    LinkRouter.app) ;;
+    *) rm -rf "$app" ;;
+  esac
 done
 
 mkdir -p "$HOME/.config/webapps"
