@@ -158,23 +158,37 @@ func runDryRun(_ urls: [String]) {
     }
 }
 
+func currentDefaultBundleId(for scheme: String) -> String? {
+    guard let probe = URL(string: "\(scheme)://example.com/"),
+          let app = NSWorkspace.shared.urlForApplication(toOpen: probe) else { return nil }
+    return Bundle(url: app)?.bundleIdentifier
+}
+
 func runSetDefault() {
-    // One scheme at a time: concurrent calls make the second one fail with
-    // "The file couldn't be opened" even though macOS applies it.
+    // The API reports "The file couldn't be opened" when LinkRouter is already
+    // the handler, so the result is judged by re-reading the default afterwards.
+    var allSet = true
     for scheme in ["https", "http"] {
+        if currentDefaultBundleId(for: scheme) == ownBundleId {
+            print("\(scheme): LinkRouter is already the default handler")
+            continue
+        }
         var done = false
-        NSWorkspace.shared.setDefaultApplication(at: Bundle.main.bundleURL, toOpenURLsWithScheme: scheme) { error in
-            if let error = error {
-                print("failed to set default for \(scheme): \(error.localizedDescription)")
-            } else {
-                print("LinkRouter is now the default handler for \(scheme)")
-            }
+        NSWorkspace.shared.setDefaultApplication(at: Bundle.main.bundleURL, toOpenURLsWithScheme: scheme) { _ in
             done = true
         }
         while !done {
             RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.1))
         }
+        let now = currentDefaultBundleId(for: scheme) ?? "unknown"
+        if now == ownBundleId {
+            print("\(scheme): LinkRouter is now the default handler")
+        } else {
+            allSet = false
+            print("\(scheme): default handler is still \(now); confirm the macOS dialog or set it in System Settings > Desktop & Dock")
+        }
     }
+    exit(allSet ? 0 : 1)
 }
 
 // MARK: - App delegate
