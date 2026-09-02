@@ -1,0 +1,2010 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>webapps Implementation Plan</title><style>
+:root { color-scheme: light dark; }
+* { box-sizing: border-box; }
+body {
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  max-width: 860px; margin: 0 auto; padding: 2.5rem 1.25rem 6rem;
+  color: #1c2024; background: #fbfbfa;
+}
+@media (prefers-color-scheme: dark) {
+  body { color: #d7dadd; background: #16181a; }
+  a { color: #6fb3ff; }
+  code, pre { background: #22262a !important; }
+  th { background: #22262a !important; }
+  tr:nth-child(even) td { background: #1c1f22 !important; }
+  blockquote { border-color: #3a4046 !important; color: #aeb4ba !important; }
+  hr { border-color: #2c3034 !important; }
+  .crumb, .meta { color: #8b9298 !important; }
+  .card { background: #1c1f22 !important; border-color: #2c3034 !important; }
+  .btn { background: #2b2f33 !important; border-color: #3a4046 !important; color: #e6e9ec !important; }
+  .btn:hover { background: #343a3f !important; }
+  .toast { background: #2b2f33 !important; color: #e6e9ec !important; border-color: #3a4046 !important; }
+  details.prompt { color: #8b9298; }
+  details.prompt pre { background: #1c1f22 !important; }
+}
+a { color: #1a6dd0; text-decoration: none; }
+a:hover { text-decoration: underline; }
+h1, h2, h3, h4 { line-height: 1.25; margin: 2rem 0 0.75rem; font-weight: 650; }
+h1 { font-size: 1.9rem; margin-top: 0.5rem; }
+h2 { font-size: 1.4rem; padding-bottom: 0.3rem; border-bottom: 1px solid rgba(128,128,128,0.25); }
+h3 { font-size: 1.15rem; }
+p, li { overflow-wrap: anywhere; }
+code { font: 0.86em ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  background: #f0f0ee; padding: 0.12em 0.36em; border-radius: 4px; }
+pre { background: #f0f0ee; padding: 1rem 1.1rem; border-radius: 8px; overflow-x: auto; }
+pre code { background: none; padding: 0; font-size: 0.84em; }
+blockquote { margin: 1rem 0; padding: 0.2rem 1rem; border-left: 3px solid #c9ccce; color: #5b6166; }
+table { border-collapse: collapse; width: 100%; margin: 1.1rem 0; font-size: 0.92em; }
+th, td { border: 1px solid rgba(128,128,128,0.3); padding: 0.5rem 0.7rem; vertical-align: top; }
+th { background: #f0f0ee; text-align: left; }
+tr:nth-child(even) td { background: #f6f6f4; }
+hr { border: none; border-top: 1px solid #d8d8d6; margin: 2rem 0; }
+.crumb { font-size: 0.85rem; margin-bottom: 1.5rem; }
+.meta { font-size: 0.8rem; color: #6b7176; }
+.toolbar { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin: 0.4rem 0 0.6rem; }
+.btn { font: inherit; font-size: 0.9rem; cursor: pointer; border: 1px solid #d8d8d6;
+  background: #fff; color: #1c2024; padding: 0.5rem 0.9rem; border-radius: 8px; transition: background .12s; }
+.btn:hover { background: #f0f0ee; }
+.toast { font-size: 0.85rem; padding: 0.45rem 0.75rem; border-radius: 7px; border: 1px solid #d8d8d6;
+  background: #fff; opacity: 0; transform: translateY(-3px); transition: opacity .15s, transform .15s; }
+.toast.show { opacity: 1; transform: none; }
+details.prompt { margin: 0.2rem 0 1rem; font-size: 0.8rem; color: #6b7176; }
+details.prompt pre { margin-top: 0.4rem; white-space: pre-wrap; font-size: 0.8rem; }
+.card { display: block; border: 1px solid #e4e4e2; border-radius: 10px;
+  padding: 0.85rem 1.1rem; margin: 0.6rem 0; background: #fff; transition: border-color .12s; }
+.card:hover { border-color: #1a6dd0; text-decoration: none; }
+.card .t { font-weight: 600; font-size: 1.02rem; }
+.card .p { font-size: 0.8rem; opacity: 0.7; margin-top: 0.15rem; }
+.group-title { margin-top: 2rem; font-size: 0.78rem; letter-spacing: 0.08em;
+  text-transform: uppercase; opacity: 0.6; }
+</style></head>
+<body><div class="crumb"><a href="../index.html">← All specs &amp; plans</a></div>
+<div class="toolbar">
+  <button id="notion-export" class="btn" type="button">⤴ Export this doc to Notion</button>
+  <span id="toast" class="toast" role="status" aria-live="polite"></span>
+</div>
+<details class="prompt"><summary>What the button does</summary>
+<p>This page runs from <code>file://</code> and can't call Notion directly. The button copies this prompt to your clipboard — paste it into Claude Code and it runs the Notion MCP export:</p>
+<pre id="prompt-text"></pre></details>
+<script>
+const PROMPT = "Export this Superpowers doc to Notion using the Notion MCP (notion-create-pages): /Users/nickpendery/code/webapps/docs/superpowers/plans/2026-09-02-webapps.md. Preserve the markdown structure. Ask me which Notion parent page/space to create it under first.";
+document.getElementById('prompt-text').textContent = PROMPT;
+const toast = document.getElementById('toast');
+function showToast(msg) {
+  toast.textContent = msg; toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2800);
+}
+async function copyText(t) {
+  try { await navigator.clipboard.writeText(t); return true; } catch (e) {}
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    const ok = document.execCommand('copy'); document.body.removeChild(ta); return ok;
+  } catch (e) { return false; }
+}
+document.getElementById('notion-export').addEventListener('click', async () => {
+  const ok = await copyText(PROMPT);
+  showToast(ok ? 'Prompt copied — paste into Claude Code to export'
+               : 'Copy failed — expand “What the button does” and copy the prompt');
+});
+</script>
+<h1>webapps Implementation Plan</h1>
+<blockquote><p><strong>For agentic workers:</strong> REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (<code>- [ ]</code>) syntax for tracking.</p></blockquote>
+<p><strong>Goal:</strong> Build Gmail, Google Calendar, and GitHub as tabbed macOS Electron apps plus a Swift <code>LinkRouter.app</code> default browser that sends links from other apps to the matching app, or to Brave.</p>
+<p><strong>Architecture:</strong> One Electron + TypeScript shell (<code>shell/</code>) parameterized by a <code>site.json</code> embedded at build time; <code>scripts/build-apps.ts</code> runs electron-builder once per entry in <code>sites.json</code>. A ~150-line Swift app (<code>router/</code>) declares <code>http</code>/<code>https</code>, matches URLs against <code>~/.config/webapps/routes.json</code> (generated from <code>sites.json</code>), and opens the target app via <code>NSWorkspace</code>. URL matching is implemented twice (TS and Swift) and both run the same fixture file.</p>
+<p><strong>Tech Stack:</strong> Electron 44 (<code>BaseWindow</code> + <code>WebContentsView</code>), TypeScript 5.9 (CommonJS output), vitest 4, electron-builder 26, tsx, Swift 6.2 (<code>swiftc</code>, language mode 5), pnpm 10, node 24 via mise.</p>
+<p><strong>Spec:</strong> <code>docs/superpowers/specs/2026-09-02-webapps-design.md</code></p>
+<h2>Global Constraints</h2>
+<ul><li>Node 24 and pnpm 10 via <code>mise.toml</code>; every shell command in this plan assumes <code>export PATH="$HOME/.local/share/mise/shims:$PATH"</code> (nvm's node 18 shadows it otherwise).</li><li>pnpm 10 skips postinstall scripts unless allowlisted: <code>package.json</code> must have <code>"pnpm": { "onlyBuiltDependencies": ["electron"] }</code> or the Electron binary is never downloaded.</li><li>No <code>"type": "module"</code> in <code>package.json</code>; TypeScript emits CommonJS. Preload scripts must be CommonJS.</li><li>Modules under <code>shell/src/shared/</code> must not import <code>electron</code>; vitest runs in plain Node.</li><li>Bundle ids are <code>dev.nick.webapps.&lt;siteId&gt;</code>; router is <code>dev.nick.webapps.linkrouter</code>.</li><li>Fallback browser bundle id: <code>com.brave.browser</code>.</li><li>Tab strip height: 38px. Left padding for traffic lights: 84px.</li><li>Scripts use <code>/usr/bin/python3</code> (system), never bare <code>python3</code> (pyenv shim may be unset).</li><li>No signing identity exists; all bundles are ad-hoc signed with <code>codesign --force --deep --sign -</code>.</li><li>Commit after every task with a normal (non-caveman) conventional commit message ending in <code>Co-Authored-By: Claude Fable 5.1 &lt;noreply@anthropic.com&gt;</code>.</li></ul>
+<hr>
+<h2>File Structure</h2>
+<table><thead><tr><th>Path</th><th>Responsibility</th></tr></thead><tbody><tr><td><code>package.json</code>, <code>tsconfig.json</code>, <code>mise.toml</code>, <code>.gitignore</code></td><td>toolchain</td></tr><tr><td><code>sites.json</code></td><td>the three sites, fallback browser, bundle id prefix</td></tr><tr><td><code>shell/fixtures/routing-fixtures.json</code></td><td>URL → expected site id; shared by TS tests and <code>router/test.sh</code></td></tr><tr><td><code>shell/src/shared/matcher.ts</code></td><td>pure URL/pattern matching + redirector unwrap + sites validation</td></tr><tr><td><code>shell/src/shared/site.ts</code></td><td><code>SiteConfig</code> type, read <code>sites.json</code>, resolve the running site</td></tr><tr><td><code>shell/src/shared/policy.ts</code></td><td>pure navigation decision (<code>tab</code> / <code>popup</code> / <code>external</code> / <code>allow</code>)</td></tr><tr><td><code>shell/src/main/user-agent.ts</code></td><td>Chrome UA string builder</td></tr><tr><td><code>shell/src/main/state.ts</code></td><td>persisted window bounds + tab URLs, debounced store</td></tr><tr><td><code>shell/src/main/tabs.ts</code></td><td><code>TabManager</code>: <code>WebContentsView</code> per tab, layout, events</td></tr><tr><td><code>shell/src/main/navigation.ts</code></td><td>attaches <code>policy.decide</code> to a <code>WebContents</code></td></tr><tr><td><code>shell/src/main/menu.ts</code></td><td>macOS application menu + shortcuts → <code>Commands</code></td></tr><tr><td><code>shell/src/main/index.ts</code></td><td>app lifecycle, single instance, <code>open-url</code>, window creation</td></tr><tr><td><code>shell/src/preload/tabstrip.ts</code></td><td><code>contextBridge</code> for the tab strip</td></tr><tr><td><code>shell/ui/tabstrip.html</code>, <code>.css</code>, <code>.js</code></td><td>tab strip renderer</td></tr><tr><td><code>scripts/build-apps.ts</code></td><td>electron-builder per site → <code>dist/&lt;Name&gt;.app</code></td></tr><tr><td><code>scripts/gen-routes.ts</code></td><td><code>sites.json</code> → <code>dist/routes.json</code></td></tr><tr><td><code>scripts/fetch-icons.sh</code></td><td>PNG → <code>icons/&lt;id&gt;.icns</code></td></tr><tr><td><code>scripts/install.sh</code></td><td>install apps + router, write config, set default browser</td></tr><tr><td><code>router/Sources/main.swift</code>, <code>router/Info.plist</code>, <code>router/build.sh</code>, <code>router/test.sh</code></td><td>LinkRouter</td></tr><tr><td><code>README.md</code></td><td>usage</td></tr></tbody></table>
+<hr>
+<h3>Task 1: Project scaffold and sites.json</h3>
+<p><strong>Files:</strong></p>
+<ul><li>Create: <code>package.json</code>, <code>tsconfig.json</code>, <code>sites.json</code>, <code>shell/src/shared/smoke.test.ts</code> (deleted in Task 2)</li><li>Existing: <code>mise.toml</code>, <code>.gitignore</code></li></ul>
+<p><strong>Interfaces:</strong></p>
+<ul><li>Produces: <code>sites.json</code> schema <code>{ fallbackBrowser, bundleIdPrefix, sites: [{ id, name, home, match[], allow[], icon }] }</code> used by every later task.</li></ul>
+<ul><li>[ ] <strong>Step 1: Write package.json</strong></li></ul>
+<pre><code class="language-json">{
+  "name": "webapps",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Site-specific Electron apps with a link router",
+  "author": "Nick Pendery &lt;nick@homebot.ai&gt;",
+  "main": "shell/out/main/index.js",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "compile": "tsc",
+    "dev": "pnpm compile &amp;&amp; WEBAPPS_SITE=${SITE:-gmail} electron .",
+    "gen-routes": "tsx scripts/gen-routes.ts",
+    "icons": "scripts/fetch-icons.sh",
+    "build": "pnpm compile &amp;&amp; tsx scripts/build-apps.ts",
+    "install-apps": "scripts/install.sh"
+  },
+  "devDependencies": {
+    "@types/node": "^24",
+    "electron": "^44.1.1",
+    "electron-builder": "^26.15.3",
+    "tsx": "^4.23.13",
+    "typescript": "~5.9",
+    "vitest": "^4.1.11"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["electron"]
+  }
+}</code></pre>
+<ul><li>[ ] <strong>Step 2: Write tsconfig.json</strong></li></ul>
+<pre><code class="language-json">{
+  "compilerOptions": {
+    "target": "ES2023",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2023"],
+    "types": ["node"],
+    "rootDir": "shell/src",
+    "outDir": "shell/out",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "sourceMap": true
+  },
+  "include": ["shell/src/**/*.ts"],
+  "exclude": ["shell/src/**/*.test.ts"]
+}</code></pre>
+<ul><li>[ ] <strong>Step 3: Write sites.json</strong></li></ul>
+<pre><code class="language-json">{
+  "fallbackBrowser": "com.brave.browser",
+  "bundleIdPrefix": "dev.nick.webapps",
+  "sites": [
+    {
+      "id": "gmail",
+      "name": "Gmail",
+      "home": "https://mail.google.com/",
+      "match": ["mail.google.com"],
+      "allow": ["accounts.google.com", "accounts.youtube.com", "myaccount.google.com", "ogs.google.com"],
+      "icon": "https://www.gstatic.com/images/branding/product/2x/gmail_2020q4_512dp.png"
+    },
+    {
+      "id": "calendar",
+      "name": "Google Calendar",
+      "home": "https://calendar.google.com/",
+      "match": ["calendar.google.com"],
+      "allow": ["accounts.google.com", "accounts.youtube.com", "myaccount.google.com", "ogs.google.com"],
+      "icon": "https://www.gstatic.com/images/branding/product/2x/calendar_2020q4_512dp.png"
+    },
+    {
+      "id": "github",
+      "name": "GitHub",
+      "home": "https://github.com/",
+      "match": ["github.com", "*.github.com"],
+      "allow": ["*.githubusercontent.com"],
+      "icon": "https://github.com/fluidicon.png"
+    }
+  ]
+}</code></pre>
+<ul><li>[ ] <strong>Step 4: Install and verify toolchain</strong></li></ul>
+<pre><code class="language-bash">cd ~/code/webapps &amp;&amp; export PATH="$HOME/.local/share/mise/shims:$PATH" &amp;&amp; pnpm install &amp;&amp; ls node_modules/electron/dist/Electron.app &gt;/dev/null &amp;&amp; echo electron-binary-ok</code></pre>
+<p>Expected: <code>electron-binary-ok</code>. If missing, the <code>onlyBuiltDependencies</code> allowlist is wrong.</p>
+<ul><li>[ ] <strong>Step 5: Smoke test vitest</strong></li></ul>
+<p><code>shell/src/shared/smoke.test.ts</code>:</p>
+<pre><code class="language-ts">import { expect, test } from 'vitest';
+test('vitest runs', () =&gt; { expect(1 + 1).toBe(2); });</code></pre>
+<p>Run: <code>pnpm test</code> → 1 passed. Then <code>pnpm typecheck</code> → no output.</p>
+<ul><li>[ ] <strong>Step 6: Commit</strong></li></ul>
+<pre><code class="language-bash">git add -A &amp;&amp; git commit -m "chore: scaffold pnpm/TypeScript/vitest project and sites.json"</code></pre>
+<hr>
+<h3>Task 2: URL matcher (TDD)</h3>
+<p><strong>Files:</strong></p>
+<ul><li>Create: <code>shell/fixtures/routing-fixtures.json</code>, <code>shell/src/shared/matcher.ts</code>, <code>shell/src/shared/matcher.test.ts</code></li><li>Delete: <code>shell/src/shared/smoke.test.ts</code></li></ul>
+<p><strong>Interfaces:</strong></p>
+<ul><li>Produces:<ul><li><code>interface SiteRules { id: string; match: string[]; allow: string[] }</code></li><li><code>parseHttpUrl(input: string): URL | null</code> — http/https only</li><li><code>unwrapRedirect(url: URL): URL</code> — one-level <code>www.google.com/url?q=</code></li><li><code>normalizeUrl(input: string): URL | null</code> — parse + unwrap</li><li><code>matchesAnyPattern(url: URL, patterns: string[]): boolean</code></li><li><code>isMatch(site: SiteRules, input: string): boolean</code> — <code>match</code> only</li><li><code>isAllowed(site: SiteRules, input: string): boolean</code> — <code>allow</code> only</li><li><code>isInScope(site: SiteRules, input: string): boolean</code> — match ∪ allow</li><li><code>routeTarget(sites: SiteRules[], input: string): string | null</code> — site id</li><li><code>validateSites(sites: SiteRules[]): string[]</code> — error strings</li></ul></li></ul>
+<ul><li>[ ] <strong>Step 1: Write the fixtures</strong></li></ul>
+<p><code>shell/fixtures/routing-fixtures.json</code>:</p>
+<pre><code class="language-json">{
+  "cases": [
+    { "url": "https://mail.google.com/mail/u/0/#inbox", "route": "gmail" },
+    { "url": "https://calendar.google.com/calendar/r/week", "route": "calendar" },
+    { "url": "https://github.com/electron/electron", "route": "github" },
+    { "url": "https://gist.github.com/someone/abc", "route": "github" },
+    { "url": "HTTPS://GITHUB.COM/Upper/Case", "route": "github" },
+    { "url": "http://github.com/plain-http", "route": "github" },
+    { "url": "https://www.google.com/url?q=https://github.com/a/b&amp;sa=D&amp;source=gmail", "route": "github" },
+    { "url": "https://www.google.com/url?url=https://calendar.google.com/event", "route": "calendar" },
+    { "url": "https://raw.githubusercontent.com/a/b/main/x.txt", "route": null },
+    { "url": "https://accounts.google.com/signin", "route": null },
+    { "url": "https://docs.google.com/document/d/1", "route": null },
+    { "url": "https://notgithub.com/x", "route": null },
+    { "url": "https://github.com.evil.example/x", "route": null },
+    { "url": "https://example.com/", "route": null },
+    { "url": "ftp://github.com/x", "route": null },
+    { "url": "not a url", "route": null }
+  ]
+}</code></pre>
+<ul><li>[ ] <strong>Step 2: Write the failing tests</strong></li></ul>
+<p><code>shell/src/shared/matcher.test.ts</code>:</p>
+<pre><code class="language-ts">import fs from 'node:fs';
+import path from 'node:path';
+import { describe, expect, test } from 'vitest';
+import {
+  isAllowed, isInScope, isMatch, matchesAnyPattern, normalizeUrl, parseHttpUrl,
+  routeTarget, unwrapRedirect, validateSites, type SiteRules,
+} from './matcher';
+
+const root = path.resolve(__dirname, '../../..');
+const sitesFile = JSON.parse(fs.readFileSync(path.join(root, 'sites.json'), 'utf8')) as { sites: SiteRules[] };
+const fixtures = JSON.parse(
+  fs.readFileSync(path.join(root, 'shell/fixtures/routing-fixtures.json'), 'utf8'),
+) as { cases: Array&lt;{ url: string; route: string | null }&gt; };
+
+const gmail = sitesFile.sites.find((s) =&gt; s.id === 'gmail')!;
+const github = sitesFile.sites.find((s) =&gt; s.id === 'github')!;
+
+describe('parseHttpUrl', () =&gt; {
+  test('accepts http and https', () =&gt; {
+    expect(parseHttpUrl('https://a.com/x')?.href).toBe('https://a.com/x');
+    expect(parseHttpUrl('http://a.com')?.protocol).toBe('http:');
+  });
+  test('rejects other schemes and garbage', () =&gt; {
+    expect(parseHttpUrl('ftp://a.com')).toBeNull();
+    expect(parseHttpUrl('javascript:alert(1)')).toBeNull();
+    expect(parseHttpUrl('about:blank')).toBeNull();
+    expect(parseHttpUrl('nope')).toBeNull();
+  });
+});
+
+describe('matchesAnyPattern', () =&gt; {
+  const u = (s: string) =&gt; new URL(s);
+  test('exact host matches only that host', () =&gt; {
+    expect(matchesAnyPattern(u('https://github.com/x'), ['github.com'])).toBe(true);
+    expect(matchesAnyPattern(u('https://gist.github.com/x'), ['github.com'])).toBe(false);
+  });
+  test('wildcard matches subdomains but not apex', () =&gt; {
+    expect(matchesAnyPattern(u('https://gist.github.com/x'), ['*.github.com'])).toBe(true);
+    expect(matchesAnyPattern(u('https://a.b.github.com/x'), ['*.github.com'])).toBe(true);
+    expect(matchesAnyPattern(u('https://github.com/x'), ['*.github.com'])).toBe(false);
+    expect(matchesAnyPattern(u('https://github.com.evil.example/x'), ['*.github.com'])).toBe(false);
+  });
+  test('host is case-insensitive', () =&gt; {
+    expect(matchesAnyPattern(u('https://GITHUB.com/x'), ['github.com'])).toBe(true);
+    expect(matchesAnyPattern(u('https://github.com/x'), ['GitHub.com'])).toBe(true);
+  });
+  test('path prefix restricts the match', () =&gt; {
+    expect(matchesAnyPattern(u('https://a.com/foo/bar'), ['a.com/foo'])).toBe(true);
+    expect(matchesAnyPattern(u('https://a.com/other'), ['a.com/foo'])).toBe(false);
+  });
+});
+
+describe('unwrapRedirect', () =&gt; {
+  test('unwraps google.com/url?q=', () =&gt; {
+    const out = unwrapRedirect(new URL('https://www.google.com/url?q=https://github.com/a/b&amp;sa=D'));
+    expect(out.href).toBe('https://github.com/a/b');
+  });
+  test('unwraps url= parameter too', () =&gt; {
+    expect(unwrapRedirect(new URL('https://www.google.com/url?url=https://example.com/')).href).toBe('https://example.com/');
+  });
+  test('leaves other URLs and non-http targets alone', () =&gt; {
+    expect(unwrapRedirect(new URL('https://www.google.com/search?q=x')).pathname).toBe('/search');
+    expect(unwrapRedirect(new URL('https://www.google.com/url?q=javascript:1')).hostname).toBe('www.google.com');
+    expect(unwrapRedirect(new URL('https://www.google.com/url')).hostname).toBe('www.google.com');
+  });
+  test('normalizeUrl parses then unwraps', () =&gt; {
+    expect(normalizeUrl('https://www.google.com/url?q=https://github.com/z')?.hostname).toBe('github.com');
+    expect(normalizeUrl('ftp://x')).toBeNull();
+  });
+});
+
+describe('scope', () =&gt; {
+  test('isMatch uses match only', () =&gt; {
+    expect(isMatch(gmail, 'https://mail.google.com/')).toBe(true);
+    expect(isMatch(gmail, 'https://accounts.google.com/')).toBe(false);
+  });
+  test('isAllowed uses allow only', () =&gt; {
+    expect(isAllowed(gmail, 'https://accounts.google.com/')).toBe(true);
+    expect(isAllowed(gmail, 'https://mail.google.com/')).toBe(false);
+  });
+  test('isInScope is match or allow', () =&gt; {
+    expect(isInScope(gmail, 'https://mail.google.com/')).toBe(true);
+    expect(isInScope(gmail, 'https://accounts.google.com/')).toBe(true);
+    expect(isInScope(gmail, 'https://docs.google.com/')).toBe(false);
+    expect(isInScope(github, 'https://raw.githubusercontent.com/x')).toBe(true);
+    expect(isInScope(github, 'not a url')).toBe(false);
+  });
+});
+
+describe('routeTarget against fixtures', () =&gt; {
+  for (const c of fixtures.cases) {
+    test(`${c.url} -&gt; ${c.route}`, () =&gt; {
+      expect(routeTarget(sitesFile.sites, c.url)).toBe(c.route);
+    });
+  }
+});
+
+describe('validateSites', () =&gt; {
+  test('sites.json has no overlapping match patterns', () =&gt; {
+    expect(validateSites(sitesFile.sites)).toEqual([]);
+  });
+  test('reports a pattern claimed twice', () =&gt; {
+    const errors = validateSites([
+      { id: 'a', match: ['x.com'], allow: [] },
+      { id: 'b', match: ['X.com'], allow: [] },
+    ]);
+    expect(errors).toEqual(['pattern "x.com" claimed by both a and b']);
+  });
+});</code></pre>
+<ul><li>[ ] <strong>Step 3: Run tests to verify they fail</strong></li></ul>
+<pre><code class="language-bash">rm shell/src/shared/smoke.test.ts &amp;&amp; pnpm test</code></pre>
+<p>Expected: FAIL, <code>Failed to resolve import "./matcher"</code>.</p>
+<ul><li>[ ] <strong>Step 4: Implement matcher.ts</strong></li></ul>
+<pre><code class="language-ts">export interface SiteRules {
+  id: string;
+  match: string[];
+  allow: string[];
+}
+
+export interface HostPattern {
+  host: string;
+  wildcard: boolean;
+  pathPrefix: string | null;
+}
+
+const REDIRECTOR_HOST = 'www.google.com';
+const REDIRECTOR_PATH = '/url';
+
+export function parsePattern(raw: string): HostPattern {
+  const trimmed = raw.trim().toLowerCase();
+  const slash = trimmed.indexOf('/');
+  const hostPart = slash === -1 ? trimmed : trimmed.slice(0, slash);
+  const pathPrefix = slash === -1 ? null : trimmed.slice(slash);
+  if (hostPart.startsWith('*.')) {
+    return { host: hostPart.slice(2), wildcard: true, pathPrefix };
+  }
+  return { host: hostPart, wildcard: false, pathPrefix };
+}
+
+export function matchesPattern(url: URL, pattern: HostPattern): boolean {
+  const host = url.hostname.toLowerCase();
+  const hostOk = pattern.wildcard ? host.endsWith(`.${pattern.host}`) : host === pattern.host;
+  if (!hostOk) return false;
+  return pattern.pathPrefix === null || url.pathname.startsWith(pattern.pathPrefix);
+}
+
+export function matchesAnyPattern(url: URL, patterns: string[]): boolean {
+  return patterns.some((p) =&gt; matchesPattern(url, parsePattern(p)));
+}
+
+export function parseHttpUrl(input: string): URL | null {
+  let url: URL;
+  try {
+    url = new URL(input);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== 'http:' &amp;&amp; url.protocol !== 'https:') return null;
+  return url;
+}
+
+export function unwrapRedirect(url: URL): URL {
+  if (url.hostname.toLowerCase() !== REDIRECTOR_HOST || url.pathname !== REDIRECTOR_PATH) return url;
+  const target = url.searchParams.get('q') ?? url.searchParams.get('url');
+  if (!target) return url;
+  return parseHttpUrl(target) ?? url;
+}
+
+export function normalizeUrl(input: string): URL | null {
+  const url = parseHttpUrl(input);
+  return url ? unwrapRedirect(url) : null;
+}
+
+export function isMatch(site: SiteRules, input: string): boolean {
+  const url = normalizeUrl(input);
+  return url !== null &amp;&amp; matchesAnyPattern(url, site.match);
+}
+
+export function isAllowed(site: SiteRules, input: string): boolean {
+  const url = normalizeUrl(input);
+  return url !== null &amp;&amp; matchesAnyPattern(url, site.allow);
+}
+
+export function isInScope(site: SiteRules, input: string): boolean {
+  return isMatch(site, input) || isAllowed(site, input);
+}
+
+export function routeTarget(sites: SiteRules[], input: string): string | null {
+  const url = normalizeUrl(input);
+  if (!url) return null;
+  const site = sites.find((s) =&gt; matchesAnyPattern(url, s.match));
+  return site?.id ?? null;
+}
+
+export function validateSites(sites: SiteRules[]): string[] {
+  const errors: string[] = [];
+  const owners = new Map&lt;string, string&gt;();
+  for (const site of sites) {
+    for (const raw of site.match) {
+      const key = raw.trim().toLowerCase();
+      const owner = owners.get(key);
+      if (owner !== undefined &amp;&amp; owner !== site.id) {
+        errors.push(`pattern "${key}" claimed by both ${owner} and ${site.id}`);
+      }
+      owners.set(key, site.id);
+    }
+  }
+  return errors;
+}</code></pre>
+<ul><li>[ ] <strong>Step 5: Run tests to verify they pass</strong></li></ul>
+<p><code>pnpm test</code> → all pass (16 fixture cases + unit tests). <code>pnpm typecheck</code> clean.</p>
+<ul><li>[ ] <strong>Step 6: Commit</strong></li></ul>
+<pre><code class="language-bash">git add -A &amp;&amp; git commit -m "feat(shell): URL matcher with redirector unwrapping and shared fixtures"</code></pre>
+<hr>
+<h3>Task 3: Site config loader and user agent (TDD)</h3>
+<p><strong>Files:</strong></p>
+<ul><li>Create: <code>shell/src/shared/site.ts</code>, <code>shell/src/shared/site.test.ts</code>, <code>shell/src/main/user-agent.ts</code>, <code>shell/src/main/user-agent.test.ts</code></li></ul>
+<p><strong>Interfaces:</strong></p>
+<ul><li>Consumes: <code>SiteRules</code> from Task 2.</li><li>Produces:<ul><li><code>interface SiteConfig extends SiteRules { name: string; home: string; bundleId: string; fallbackBrowser: string }</code></li><li><code>interface SitesFile { fallbackBrowser: string; bundleIdPrefix: string; sites: SiteEntry[] }</code> where <code>SiteEntry = SiteRules &amp; { name; home; icon }</code></li><li><code>readSitesFile(file: string): SitesFile</code></li><li><code>siteConfigs(file: SitesFile): SiteConfig[]</code></li><li><code>resolveSiteConfig(opts: { resourcesPath: string; siteId: string | undefined; sitesFile: string }): SiteConfig</code></li><li><code>chromeUserAgent(chromeVersion: string): string</code></li></ul></li></ul>
+<ul><li>[ ] <strong>Step 1: Write failing tests</strong></li></ul>
+<p><code>shell/src/shared/site.test.ts</code>:</p>
+<pre><code class="language-ts">import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { describe, expect, test } from 'vitest';
+import { readSitesFile, resolveSiteConfig, siteConfigs } from './site';
+
+const root = path.resolve(__dirname, '../../..');
+const sitesPath = path.join(root, 'sites.json');
+
+describe('siteConfigs', () =&gt; {
+  test('adds bundleId and fallbackBrowser to each site', () =&gt; {
+    const configs = siteConfigs(readSitesFile(sitesPath));
+    const gmail = configs.find((c) =&gt; c.id === 'gmail')!;
+    expect(gmail.bundleId).toBe('dev.nick.webapps.gmail');
+    expect(gmail.fallbackBrowser).toBe('com.brave.browser');
+    expect(gmail.home).toBe('https://mail.google.com/');
+    expect(configs.map((c) =&gt; c.id)).toEqual(['gmail', 'calendar', 'github']);
+  });
+});
+
+describe('resolveSiteConfig', () =&gt; {
+  test('prefers Resources/site.json when present', () =&gt; {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'webapps-'));
+    fs.writeFileSync(path.join(dir, 'site.json'), JSON.stringify({
+      id: 'x', name: 'X', home: 'https://x.test/', match: ['x.test'], allow: [],
+      bundleId: 'dev.nick.webapps.x', fallbackBrowser: 'com.brave.browser',
+    }));
+    const cfg = resolveSiteConfig({ resourcesPath: dir, siteId: 'gmail', sitesFile: sitesPath });
+    expect(cfg.id).toBe('x');
+  });
+  test('falls back to WEBAPPS_SITE id from sites.json in dev', () =&gt; {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'webapps-'));
+    const cfg = resolveSiteConfig({ resourcesPath: dir, siteId: 'github', sitesFile: sitesPath });
+    expect(cfg.bundleId).toBe('dev.nick.webapps.github');
+  });
+  test('throws for unknown or missing site id', () =&gt; {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'webapps-'));
+    expect(() =&gt; resolveSiteConfig({ resourcesPath: dir, siteId: 'nope', sitesFile: sitesPath })).toThrow(/unknown site "nope"/);
+    expect(() =&gt; resolveSiteConfig({ resourcesPath: dir, siteId: undefined, sitesFile: sitesPath })).toThrow(/WEBAPPS_SITE/);
+  });
+});</code></pre>
+<p><code>shell/src/main/user-agent.test.ts</code>:</p>
+<pre><code class="language-ts">import { expect, test } from 'vitest';
+import { chromeUserAgent } from './user-agent';
+
+test('builds a Chrome UA with major version only and no Electron token', () =&gt; {
+  const ua = chromeUserAgent('132.0.6834.83');
+  expect(ua).toBe('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36');
+  expect(ua).not.toMatch(/Electron/);
+});</code></pre>
+<ul><li>[ ] <strong>Step 2: Run to verify failure</strong></li></ul>
+<p><code>pnpm test</code> → FAIL resolving <code>./site</code> and <code>./user-agent</code>.</p>
+<ul><li>[ ] <strong>Step 3: Implement</strong></li></ul>
+<p><code>shell/src/shared/site.ts</code>:</p>
+<pre><code class="language-ts">import fs from 'node:fs';
+import path from 'node:path';
+import type { SiteRules } from './matcher';
+
+export interface SiteEntry extends SiteRules {
+  name: string;
+  home: string;
+  icon: string;
+}
+
+export interface SitesFile {
+  fallbackBrowser: string;
+  bundleIdPrefix: string;
+  sites: SiteEntry[];
+}
+
+export interface SiteConfig extends SiteRules {
+  name: string;
+  home: string;
+  bundleId: string;
+  fallbackBrowser: string;
+}
+
+export function readSitesFile(file: string): SitesFile {
+  return JSON.parse(fs.readFileSync(file, 'utf8')) as SitesFile;
+}
+
+export function siteConfigs(file: SitesFile): SiteConfig[] {
+  return file.sites.map((s) =&gt; ({
+    id: s.id,
+    name: s.name,
+    home: s.home,
+    match: s.match,
+    allow: s.allow,
+    bundleId: `${file.bundleIdPrefix}.${s.id}`,
+    fallbackBrowser: file.fallbackBrowser,
+  }));
+}
+
+export interface ResolveOptions {
+  resourcesPath: string;
+  siteId: string | undefined;
+  sitesFile: string;
+}
+
+export function resolveSiteConfig(opts: ResolveOptions): SiteConfig {
+  const embedded = path.join(opts.resourcesPath, 'site.json');
+  if (fs.existsSync(embedded)) {
+    return JSON.parse(fs.readFileSync(embedded, 'utf8')) as SiteConfig;
+  }
+  if (!opts.siteId) {
+    throw new Error('No embedded site.json and WEBAPPS_SITE is not set');
+  }
+  const config = siteConfigs(readSitesFile(opts.sitesFile)).find((c) =&gt; c.id === opts.siteId);
+  if (!config) throw new Error(`unknown site "${opts.siteId}" in ${opts.sitesFile}`);
+  return config;
+}</code></pre>
+<p><code>shell/src/main/user-agent.ts</code>:</p>
+<pre><code class="language-ts">/** Google rejects sign-in from a UA containing "Electron"; present as plain Chrome. */
+export function chromeUserAgent(chromeVersion: string): string {
+  const major = chromeVersion.split('.')[0];
+  return `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${major}.0.0.0 Safari/537.36`;
+}</code></pre>
+<ul><li>[ ] <strong>Step 4: Verify pass</strong></li></ul>
+<p><code>pnpm test &amp;&amp; pnpm typecheck</code>.</p>
+<ul><li>[ ] <strong>Step 5: Commit</strong></li></ul>
+<pre><code class="language-bash">git add -A &amp;&amp; git commit -m "feat(shell): site config resolution and Chrome user agent"</code></pre>
+<hr>
+<h3>Task 4: Build pipeline + open-url delivery check</h3>
+<p>Verifies the spec's top risk before building the tab UI. The <code>index.ts</code> here is throwaway and is replaced in Task 8.</p>
+<p><strong>Files:</strong></p>
+<ul><li>Create: <code>scripts/fetch-icons.sh</code>, <code>scripts/build-apps.ts</code>, <code>scripts/gen-routes.ts</code>, <code>shell/src/main/index.ts</code> (temporary), <code>icons/*.icns</code> (generated, committed)</li></ul>
+<p><strong>Interfaces:</strong></p>
+<ul><li>Consumes: <code>readSitesFile</code>, <code>siteConfigs</code> (Task 3).</li><li>Produces: <code>dist/&lt;Name&gt;.app</code> per site, <code>dist/routes.json</code> with shape <code>{ fallback: string, routes: [{ bundleId: string, match: string[] }] }</code>. Each app's <code>Resources/site.json</code> is a <code>SiteConfig</code>.</li></ul>
+<ul><li>[ ] <strong>Step 1: Icons script</strong></li></ul>
+<p><code>scripts/fetch-icons.sh</code> (chmod +x):</p>
+<pre><code class="language-bash">#!/usr/bin/env bash
+# Download each site's icon PNG and convert it to icons/&lt;id&gt;.icns.
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/.." &amp;&amp; pwd)"
+mkdir -p "$ROOT/icons"
+TMP="$(mktemp -d)"
+trap 'rm -rf "$TMP"' EXIT
+
+/usr/bin/python3 -c 'import json,sys
+for s in json.load(open(sys.argv[1]))["sites"]:
+    print(s["id"], s["icon"])' "$ROOT/sites.json" | while read -r id url; do
+  png="$TMP/$id.png"
+  curl -fsSL "$url" -o "$png"
+  set="$TMP/$id.iconset"
+  mkdir -p "$set"
+  for s in 16 32 128 256 512; do
+    sips -z "$s" "$s" "$png" --out "$set/icon_${s}x${s}.png" &gt;/dev/null
+    d=$((s * 2))
+    sips -z "$d" "$d" "$png" --out "$set/icon_${s}x${s}@2x.png" &gt;/dev/null
+  done
+  iconutil -c icns "$set" -o "$ROOT/icons/$id.icns"
+  echo "icons/$id.icns"
+done</code></pre>
+<p>Run: <code>scripts/fetch-icons.sh</code> → three <code>.icns</code> files.</p>
+<ul><li>[ ] <strong>Step 2: Routes generator</strong></li></ul>
+<p><code>scripts/gen-routes.ts</code>:</p>
+<pre><code class="language-ts">import fs from 'node:fs';
+import path from 'node:path';
+import { readSitesFile, siteConfigs } from '../shell/src/shared/site';
+
+const root = path.resolve(__dirname, '..');
+const sitesFile = readSitesFile(path.join(root, 'sites.json'));
+const routes = {
+  fallback: sitesFile.fallbackBrowser,
+  routes: siteConfigs(sitesFile).map((s) =&gt; ({ bundleId: s.bundleId, match: s.match })),
+};
+fs.mkdirSync(path.join(root, 'dist'), { recursive: true });
+const out = path.join(root, 'dist', 'routes.json');
+fs.writeFileSync(out, JSON.stringify(routes, null, 2) + '\n');
+console.log(out);</code></pre>
+<ul><li>[ ] <strong>Step 3: Builder script</strong></li></ul>
+<p><code>scripts/build-apps.ts</code>:</p>
+<pre><code class="language-ts">import { execFileSync } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
+import { readSitesFile, siteConfigs } from '../shell/src/shared/site';
+
+const root = path.resolve(__dirname, '..');
+const dist = path.join(root, 'dist');
+const only = process.argv.slice(2);
+const arch = process.arch === 'arm64' ? 'arm64' : 'x64';
+
+fs.mkdirSync(dist, { recursive: true });
+const sitesFile = readSitesFile(path.join(root, 'sites.json'));
+
+for (const site of siteConfigs(sitesFile)) {
+  if (only.length &gt; 0 &amp;&amp; !only.includes(site.id)) continue;
+  console.log(`\n=== building ${site.name} (${site.bundleId})`);
+
+  const siteJson = path.join(dist, `site-${site.id}.json`);
+  fs.writeFileSync(siteJson, JSON.stringify(site, null, 2));
+
+  const icon = path.join(root, 'icons', `${site.id}.icns`);
+  if (!fs.existsSync(icon)) throw new Error(`missing ${icon}; run scripts/fetch-icons.sh`);
+
+  const config = {
+    appId: site.bundleId,
+    productName: site.name,
+    extraMetadata: { name: site.id, productName: site.name },
+    directories: { output: path.join(dist, 'build', site.id) },
+    files: ['shell/out/**/*', 'shell/ui/**/*', '!**/*.map'],
+    extraResources: [{ from: siteJson, to: 'site.json' }],
+    mac: {
+      target: [{ target: 'dir', arch: [arch] }],
+      icon,
+      identity: null,
+      category: 'public.app-category.productivity',
+    },
+    protocols: [{ name: 'Web URL', schemes: ['http', 'https'], role: 'Viewer' }],
+    npmRebuild: false,
+  };
+  const configPath = path.join(dist, `builder-${site.id}.json`);
+  fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+
+  execFileSync('pnpm', ['exec', 'electron-builder', '--mac', '--config', configPath], {
+    cwd: root,
+    stdio: 'inherit',
+    env: { ...process.env, CSC_IDENTITY_AUTO_DISCOVERY: 'false' },
+  });
+
+  const outDir = path.join(dist, 'build', site.id);
+  const macDir = fs.readdirSync(outDir).find((d) =&gt; d.startsWith('mac'));
+  if (!macDir) throw new Error(`no mac output under ${outDir}`);
+  const built = path.join(outDir, macDir, `${site.name}.app`);
+  const target = path.join(dist, `${site.name}.app`);
+  fs.rmSync(target, { recursive: true, force: true });
+  fs.renameSync(built, target);
+  execFileSync('codesign', ['--force', '--deep', '--sign', '-', target], { stdio: 'inherit' });
+  console.log(`=== ${target}`);
+}</code></pre>
+<ul><li>[ ] <strong>Step 4: Temporary main that proves open-url delivery</strong></li></ul>
+<p><code>shell/src/main/index.ts</code> (throwaway):</p>
+<pre><code class="language-ts">import { app, BaseWindow, WebContentsView } from 'electron';
+import fs from 'node:fs';
+import path from 'node:path';
+import { resolveSiteConfig } from '../shared/site';
+
+const site = resolveSiteConfig({
+  resourcesPath: process.resourcesPath,
+  siteId: process.env.WEBAPPS_SITE,
+  sitesFile: path.join(app.getAppPath(), 'sites.json'),
+});
+app.setName(site.name);
+app.setPath('userData', path.join(app.getPath('appData'), site.name));
+const log = (line: string) =&gt; fs.appendFileSync(path.join(app.getPath('userData'), 'open-url.log'), `${new Date().toISOString()} ${line}\n`);
+
+let view: WebContentsView | null = null;
+app.on('open-url', (event, url) =&gt; {
+  event.preventDefault();
+  log(`open-url ${url}`);
+  view?.webContents.loadURL(url);
+});
+
+app.whenReady().then(() =&gt; {
+  const win = new BaseWindow({ width: 1200, height: 800, title: site.name });
+  view = new WebContentsView();
+  win.contentView.addChildView(view);
+  view.setBounds({ x: 0, y: 0, width: 1200, height: 800 });
+  view.webContents.loadURL(site.home);
+  log('ready');
+});</code></pre>
+<ul><li>[ ] <strong>Step 5: Build Gmail only and test delivery</strong></li></ul>
+<pre><code class="language-bash">pnpm build gmail
+plutil -p "dist/Gmail.app/Contents/Info.plist" | grep -A6 CFBundleURLTypes
+open dist/Gmail.app &amp;&amp; sleep 4 &amp;&amp; open -b dev.nick.webapps.gmail "https://mail.google.com/mail/u/0/#sent" &amp;&amp; sleep 2 &amp;&amp; cat "$HOME/Library/Application Support/Gmail/open-url.log"</code></pre>
+<p>Expected: plist shows <code>http</code>/<code>https</code> schemes; log has <code>ready</code> then <code>open-url https://mail.google.com/mail/u/0/#sent</code>. If <code>open-url</code> does not appear, stop and switch to the custom-scheme fallback from the spec before continuing.</p>
+<p>Quit the test app: <code>osascript -e 'tell application id "dev.nick.webapps.gmail" to quit'</code>.</p>
+<ul><li>[ ] <strong>Step 6: Commit</strong></li></ul>
+<pre><code class="language-bash">git add -A &amp;&amp; git commit -m "build: electron-builder per-site packaging, icons, routes generator"</code></pre>
+<hr>
+<h3>Task 5: Persisted state store (TDD)</h3>
+<p><strong>Files:</strong></p>
+<ul><li>Create: <code>shell/src/main/state.ts</code>, <code>shell/src/main/state.test.ts</code></li></ul>
+<p><strong>Interfaces:</strong></p>
+<ul><li>Produces:<ul><li><code>interface WindowBounds { x: number; y: number; width: number; height: number }</code></li><li><code>interface PersistedState { bounds: WindowBounds | null; tabs: string[]; activeIndex: number }</code></li><li><code>readState(file: string): PersistedState</code></li><li><code>writeState(file: string, state: PersistedState): void</code></li><li><code>createStateStore(file: string, delayMs?: number): StateStore</code> with <code>load()</code>, <code>save(state)</code> (debounced), <code>flush()</code> (synchronous write of the pending state)</li></ul></li></ul>
+<ul><li>[ ] <strong>Step 1: Failing tests</strong></li></ul>
+<p><code>shell/src/main/state.test.ts</code>:</p>
+<pre><code class="language-ts">import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { describe, expect, test, vi } from 'vitest';
+import { createStateStore, EMPTY_STATE, readState, writeState } from './state';
+
+const tmpFile = () =&gt; path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'webapps-state-')), 'nested', 'state.json');
+
+describe('readState', () =&gt; {
+  test('returns EMPTY_STATE for a missing file', () =&gt; {
+    expect(readState(tmpFile())).toEqual(EMPTY_STATE);
+  });
+  test('returns EMPTY_STATE for malformed JSON', () =&gt; {
+    const f = tmpFile();
+    fs.mkdirSync(path.dirname(f), { recursive: true });
+    fs.writeFileSync(f, '{nope');
+    expect(readState(f)).toEqual(EMPTY_STATE);
+  });
+  test('sanitizes partial or wrong-typed content', () =&gt; {
+    const f = tmpFile();
+    fs.mkdirSync(path.dirname(f), { recursive: true });
+    fs.writeFileSync(f, JSON.stringify({ tabs: ['https://a.com/', 42, 'ftp://x'], activeIndex: 9, bounds: { x: 1 } }));
+    expect(readState(f)).toEqual({ bounds: null, tabs: ['https://a.com/'], activeIndex: 0 });
+  });
+});
+
+describe('writeState/readState round trip', () =&gt; {
+  test('creates parent dirs and round-trips', () =&gt; {
+    const f = tmpFile();
+    const state = { bounds: { x: 10, y: 20, width: 800, height: 600 }, tabs: ['https://a.com/', 'https://b.com/'], activeIndex: 1 };
+    writeState(f, state);
+    expect(readState(f)).toEqual(state);
+  });
+});
+
+describe('createStateStore', () =&gt; {
+  test('debounces saves and flush writes synchronously', () =&gt; {
+    vi.useFakeTimers();
+    const f = tmpFile();
+    const store = createStateStore(f, 500);
+    store.save({ bounds: null, tabs: ['https://one/'], activeIndex: 0 });
+    store.save({ bounds: null, tabs: ['https://two/'], activeIndex: 0 });
+    expect(fs.existsSync(f)).toBe(false);
+    vi.advanceTimersByTime(500);
+    expect(readState(f).tabs).toEqual(['https://two/']);
+    store.save({ bounds: null, tabs: ['https://three/'], activeIndex: 0 });
+    store.flush();
+    expect(readState(f).tabs).toEqual(['https://three/']);
+    vi.useRealTimers();
+  });
+});</code></pre>
+<ul><li>[ ] <strong>Step 2: Verify failure</strong> — <code>pnpm test</code> fails resolving <code>./state</code>.</li></ul>
+<ul><li>[ ] <strong>Step 3: Implement</strong></li></ul>
+<p><code>shell/src/main/state.ts</code>:</p>
+<pre><code class="language-ts">import fs from 'node:fs';
+import path from 'node:path';
+
+export interface WindowBounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface PersistedState {
+  bounds: WindowBounds | null;
+  tabs: string[];
+  activeIndex: number;
+}
+
+export const EMPTY_STATE: PersistedState = { bounds: null, tabs: [], activeIndex: 0 };
+
+export interface StateStore {
+  load(): PersistedState;
+  save(state: PersistedState): void;
+  flush(): void;
+}
+
+function isHttpUrl(value: unknown): value is string {
+  if (typeof value !== 'string') return false;
+  try {
+    const u = new URL(value);
+    return u.protocol === 'http:' || u.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+function sanitizeBounds(value: unknown): WindowBounds | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const b = value as Record&lt;string, unknown&gt;;
+  const nums = [b.x, b.y, b.width, b.height];
+  if (!nums.every((n) =&gt; typeof n === 'number' &amp;&amp; Number.isFinite(n))) return null;
+  return { x: b.x as number, y: b.y as number, width: b.width as number, height: b.height as number };
+}
+
+export function readState(file: string): PersistedState {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch {
+    return { ...EMPTY_STATE };
+  }
+  if (typeof raw !== 'object' || raw === null) return { ...EMPTY_STATE };
+  const r = raw as Record&lt;string, unknown&gt;;
+  const tabs = Array.isArray(r.tabs) ? r.tabs.filter(isHttpUrl) : [];
+  const idx = typeof r.activeIndex === 'number' ? r.activeIndex : 0;
+  const activeIndex = idx &gt;= 0 &amp;&amp; idx &lt; tabs.length ? idx : 0;
+  return { bounds: sanitizeBounds(r.bounds), tabs, activeIndex };
+}
+
+export function writeState(file: string, state: PersistedState): void {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const tmp = `${file}.tmp`;
+  fs.writeFileSync(tmp, JSON.stringify(state, null, 2));
+  fs.renameSync(tmp, file);
+}
+
+export function createStateStore(file: string, delayMs = 500): StateStore {
+  let pending: PersistedState | null = null;
+  let timer: NodeJS.Timeout | null = null;
+  const flush = () =&gt; {
+    if (timer) clearTimeout(timer);
+    timer = null;
+    if (pending) {
+      try {
+        writeState(file, pending);
+      } catch (err) {
+        console.error('state write failed', err);
+      }
+      pending = null;
+    }
+  };
+  return {
+    load: () =&gt; readState(file),
+    save: (state) =&gt; {
+      pending = state;
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(flush, delayMs);
+    },
+    flush,
+  };
+}</code></pre>
+<ul><li>[ ] <strong>Step 4: Verify pass</strong> — <code>pnpm test &amp;&amp; pnpm typecheck</code>.</li></ul>
+<ul><li>[ ] <strong>Step 5: Commit</strong></li></ul>
+<pre><code class="language-bash">git add -A &amp;&amp; git commit -m "feat(shell): persisted window bounds and tab state store"</code></pre>
+<hr>
+<h3>Task 6: Navigation policy (TDD) and attachment</h3>
+<p><strong>Files:</strong></p>
+<ul><li>Create: <code>shell/src/shared/policy.ts</code>, <code>shell/src/shared/policy.test.ts</code>, <code>shell/src/main/navigation.ts</code></li></ul>
+<p><strong>Interfaces:</strong></p>
+<ul><li>Consumes: <code>isMatch</code>, <code>isAllowed</code>, <code>normalizeUrl</code>, <code>parseHttpUrl</code> (Task 2), <code>SiteConfig</code> (Task 3).</li><li>Produces:<ul><li><code>type NavDecision = { action: 'allow' } | { action: 'external'; url: string }</code> for top-level navigation</li><li><code>type OpenDecision = { action: 'tab'; url: string } | { action: 'popup' } | { action: 'external'; url: string }</code> for <code>window.open</code></li><li><code>decideNavigation(site: SiteRules, rawUrl: string): NavDecision</code></li><li><code>decideWindowOpen(site: SiteRules, rawUrl: string): OpenDecision</code></li><li><code>attachNavigationPolicy(wc: WebContents, site: SiteConfig, hooks: { openTab(url: string): void; openExternal?(url: string): void }): void</code></li></ul></li></ul>
+<p>Rules:</p>
+<ul><li>Navigation: non-http (about:blank, javascript:, blob:) → allow. In scope (match ∪ allow) → allow. Otherwise → external with the unwrapped URL.</li><li>window.open: non-http → popup (Gmail opens <code>about:blank</code> popups then navigates them). <code>match</code> host → tab with unwrapped URL. <code>allow</code>-only host → popup (login popups need <code>window.opener</code>). Otherwise → external with the unwrapped URL.</li></ul>
+<ul><li>[ ] <strong>Step 1: Failing tests</strong></li></ul>
+<p><code>shell/src/shared/policy.test.ts</code>:</p>
+<pre><code class="language-ts">import { describe, expect, test } from 'vitest';
+import { decideNavigation, decideWindowOpen } from './policy';
+
+const gmail = { id: 'gmail', match: ['mail.google.com'], allow: ['accounts.google.com'] };
+
+describe('decideNavigation', () =&gt; {
+  test('allows in-scope and non-http', () =&gt; {
+    expect(decideNavigation(gmail, 'https://mail.google.com/mail/')).toEqual({ action: 'allow' });
+    expect(decideNavigation(gmail, 'https://accounts.google.com/signin')).toEqual({ action: 'allow' });
+    expect(decideNavigation(gmail, 'about:blank')).toEqual({ action: 'allow' });
+  });
+  test('sends out-of-scope to external, unwrapped', () =&gt; {
+    expect(decideNavigation(gmail, 'https://docs.google.com/d/1')).toEqual({ action: 'external', url: 'https://docs.google.com/d/1' });
+    expect(decideNavigation(gmail, 'https://www.google.com/url?q=https://github.com/a/b')).toEqual({ action: 'external', url: 'https://github.com/a/b' });
+  });
+});
+
+describe('decideWindowOpen', () =&gt; {
+  test('match host becomes a tab', () =&gt; {
+    expect(decideWindowOpen(gmail, 'https://mail.google.com/mail/u/0/#inbox')).toEqual({ action: 'tab', url: 'https://mail.google.com/mail/u/0/#inbox' });
+  });
+  test('allow-only host and non-http become popups', () =&gt; {
+    expect(decideWindowOpen(gmail, 'https://accounts.google.com/o/oauth2')).toEqual({ action: 'popup' });
+    expect(decideWindowOpen(gmail, 'about:blank')).toEqual({ action: 'popup' });
+    expect(decideWindowOpen(gmail, '')).toEqual({ action: 'popup' });
+  });
+  test('everything else goes external, unwrapped', () =&gt; {
+    expect(decideWindowOpen(gmail, 'https://www.google.com/url?q=https://example.com/x')).toEqual({ action: 'external', url: 'https://example.com/x' });
+  });
+});</code></pre>
+<ul><li>[ ] <strong>Step 2: Verify failure</strong> — <code>pnpm test</code> fails resolving <code>./policy</code>.</li></ul>
+<ul><li>[ ] <strong>Step 3: Implement</strong></li></ul>
+<p><code>shell/src/shared/policy.ts</code>:</p>
+<pre><code class="language-ts">import { isAllowed, isMatch, normalizeUrl, type SiteRules } from './matcher';
+
+export type NavDecision = { action: 'allow' } | { action: 'external'; url: string };
+export type OpenDecision = { action: 'tab'; url: string } | { action: 'popup' } | { action: 'external'; url: string };
+
+export function decideNavigation(site: SiteRules, rawUrl: string): NavDecision {
+  const url = normalizeUrl(rawUrl);
+  if (!url) return { action: 'allow' };
+  if (isMatch(site, rawUrl) || isAllowed(site, rawUrl)) return { action: 'allow' };
+  return { action: 'external', url: url.href };
+}
+
+export function decideWindowOpen(site: SiteRules, rawUrl: string): OpenDecision {
+  const url = normalizeUrl(rawUrl);
+  if (!url) return { action: 'popup' };
+  if (isMatch(site, rawUrl)) return { action: 'tab', url: url.href };
+  if (isAllowed(site, rawUrl)) return { action: 'popup' };
+  return { action: 'external', url: url.href };
+}</code></pre>
+<p><code>shell/src/main/navigation.ts</code>:</p>
+<pre><code class="language-ts">import { shell, type WebContents } from 'electron';
+import { decideNavigation, decideWindowOpen } from '../shared/policy';
+import type { SiteConfig } from '../shared/site';
+
+export interface NavigationHooks {
+  openTab(url: string): void;
+  openExternal?(url: string): void;
+}
+
+/** Keep in-scope navigation inside the app; hand everything else to the system default browser (the router). */
+export function attachNavigationPolicy(wc: WebContents, site: SiteConfig, hooks: NavigationHooks): void {
+  const openExternal = hooks.openExternal ?? ((url: string) =&gt; void shell.openExternal(url));
+
+  wc.on('will-navigate', (event, url) =&gt; {
+    const decision = decideNavigation(site, url);
+    if (decision.action === 'external') {
+      event.preventDefault();
+      openExternal(decision.url);
+    }
+  });
+
+  wc.setWindowOpenHandler(({ url }) =&gt; {
+    const decision = decideWindowOpen(site, url);
+    switch (decision.action) {
+      case 'tab':
+        hooks.openTab(decision.url);
+        return { action: 'deny' };
+      case 'external':
+        openExternal(decision.url);
+        return { action: 'deny' };
+      case 'popup':
+        return { action: 'allow' };
+    }
+  });
+
+  // Popups created with action: 'allow' get the same policy.
+  wc.on('did-create-window', (child) =&gt; {
+    attachNavigationPolicy(child.webContents, site, hooks);
+  });
+}</code></pre>
+<ul><li>[ ] <strong>Step 4: Verify pass</strong> — <code>pnpm test &amp;&amp; pnpm typecheck</code>.</li></ul>
+<ul><li>[ ] <strong>Step 5: Commit</strong></li></ul>
+<pre><code class="language-bash">git add -A &amp;&amp; git commit -m "feat(shell): navigation policy routing out-of-scope links to the system browser"</code></pre>
+<hr>
+<h3>Task 7: TabManager, tab strip UI, preload</h3>
+<p>No unit tests (Electron objects); verified by running <code>SITE=github pnpm dev</code> in Task 8.</p>
+<p><strong>Files:</strong></p>
+<ul><li>Create: <code>shell/src/main/tabs.ts</code>, <code>shell/src/preload/tabstrip.ts</code>, <code>shell/ui/tabstrip.html</code>, <code>shell/ui/tabstrip.css</code>, <code>shell/ui/tabstrip.js</code></li></ul>
+<p><strong>Interfaces:</strong></p>
+<ul><li>Produces:<ul><li><code>TAB_STRIP_HEIGHT = 38</code></li><li><code>interface TabInfo { id: number; title: string; url: string; favicon: string | null; active: boolean; loading: boolean }</code></li><li><code>class TabManager</code> with constructor <code>(opts: { window: BaseWindow; strip: WebContentsView; onChange(tabs: TabInfo[]): void; onTabCreated(wc: WebContents): void; onEmpty(): void })</code> and methods <code>newTab(url, activate = true): number</code>, <code>activate(id)</code>, <code>activateIndex(i)</code>, <code>next()</code>, <code>prev()</code>, <code>close(id)</code>, <code>closeActive()</code>, <code>list(): TabInfo[]</code>, <code>urls(): string[]</code>, <code>activeIndex(): number</code>, <code>get activeWebContents(): WebContents | null</code>, <code>layout()</code>, <code>destroy()</code></li><li>IPC channels: main → strip <code>tabs:state</code> (TabInfo[]); strip → main <code>tabs:ready</code>, <code>tabs:activate</code> (id), <code>tabs:close</code> (id), <code>tabs:new</code></li><li>Preload exposes <code>window.tabs = { onState(cb), activate(id), close(id), newTab() }</code></li></ul></li></ul>
+<ul><li>[ ] <strong>Step 1: tabs.ts</strong></li></ul>
+<pre><code class="language-ts">import { BaseWindow, WebContentsView, type WebContents } from 'electron';
+
+export const TAB_STRIP_HEIGHT = 38;
+
+export interface TabInfo {
+  id: number;
+  title: string;
+  url: string;
+  favicon: string | null;
+  active: boolean;
+  loading: boolean;
+}
+
+export interface TabManagerOptions {
+  window: BaseWindow;
+  strip: WebContentsView;
+  onChange(tabs: TabInfo[]): void;
+  onTabCreated(webContents: WebContents): void;
+  onEmpty(): void;
+}
+
+interface Tab {
+  id: number;
+  view: WebContentsView;
+  title: string;
+  url: string;
+  favicon: string | null;
+  loading: boolean;
+}
+
+export class TabManager {
+  private tabs: Tab[] = [];
+  private activeId: number | null = null;
+  private nextId = 1;
+  private readonly onResize = () =&gt; this.layout();
+
+  constructor(private readonly opts: TabManagerOptions) {
+    opts.window.contentView.addChildView(opts.strip);
+    opts.window.on('resize', this.onResize);
+    this.layout();
+  }
+
+  get activeWebContents(): WebContents | null {
+    return this.activeTab()?.view.webContents ?? null;
+  }
+
+  list(): TabInfo[] {
+    return this.tabs.map((t) =&gt; ({
+      id: t.id, title: t.title, url: t.url, favicon: t.favicon, loading: t.loading, active: t.id === this.activeId,
+    }));
+  }
+
+  urls(): string[] {
+    return this.tabs.map((t) =&gt; t.url);
+  }
+
+  activeIndex(): number {
+    const i = this.tabs.findIndex((t) =&gt; t.id === this.activeId);
+    return i === -1 ? 0 : i;
+  }
+
+  newTab(url: string, activate = true): number {
+    const view = new WebContentsView({ webPreferences: { sandbox: true, contextIsolation: true } });
+    const tab: Tab = { id: this.nextId++, view, title: url, url, favicon: null, loading: true };
+    this.tabs.push(tab);
+    this.wire(tab);
+    this.opts.onTabCreated(view.webContents);
+    void view.webContents.loadURL(url);
+    if (activate || this.activeId === null) this.activate(tab.id);
+    else this.emit();
+    return tab.id;
+  }
+
+  activate(id: number): void {
+    const next = this.tabs.find((t) =&gt; t.id === id);
+    if (!next || next.id === this.activeId) return;
+    const current = this.activeTab();
+    if (current) this.opts.window.contentView.removeChildView(current.view);
+    this.activeId = next.id;
+    this.opts.window.contentView.addChildView(next.view);
+    this.layout();
+    next.view.webContents.focus();
+    this.emit();
+  }
+
+  activateIndex(index: number): void {
+    const tab = this.tabs[index];
+    if (tab) this.activate(tab.id);
+  }
+
+  next(): void {
+    if (this.tabs.length) this.activateIndex((this.activeIndex() + 1) % this.tabs.length);
+  }
+
+  prev(): void {
+    if (this.tabs.length) this.activateIndex((this.activeIndex() - 1 + this.tabs.length) % this.tabs.length);
+  }
+
+  close(id: number): void {
+    const index = this.tabs.findIndex((t) =&gt; t.id === id);
+    if (index === -1) return;
+    const [tab] = this.tabs.splice(index, 1);
+    const wasActive = tab.id === this.activeId;
+    if (wasActive) {
+      this.opts.window.contentView.removeChildView(tab.view);
+      this.activeId = null;
+    }
+    tab.view.webContents.close();
+    if (this.tabs.length === 0) {
+      this.emit();
+      this.opts.onEmpty();
+      return;
+    }
+    if (wasActive) this.activateIndex(Math.min(index, this.tabs.length - 1));
+    else this.emit();
+  }
+
+  closeActive(): void {
+    if (this.activeId !== null) this.close(this.activeId);
+  }
+
+  layout(): void {
+    const [width, height] = this.opts.window.getContentSize();
+    this.opts.strip.setBounds({ x: 0, y: 0, width, height: TAB_STRIP_HEIGHT });
+    this.activeTab()?.view.setBounds({ x: 0, y: TAB_STRIP_HEIGHT, width, height: Math.max(0, height - TAB_STRIP_HEIGHT) });
+  }
+
+  destroy(): void {
+    this.opts.window.removeListener('resize', this.onResize);
+    for (const tab of this.tabs) tab.view.webContents.close();
+    this.tabs = [];
+    this.activeId = null;
+  }
+
+  private activeTab(): Tab | undefined {
+    return this.tabs.find((t) =&gt; t.id === this.activeId);
+  }
+
+  private wire(tab: Tab): void {
+    const wc = tab.view.webContents;
+    wc.on('page-title-updated', (_e, title) =&gt; { tab.title = title; this.emit(); });
+    wc.on('did-navigate', (_e, url) =&gt; { tab.url = url; this.emit(); });
+    wc.on('did-navigate-in-page', (_e, url, isMainFrame) =&gt; { if (isMainFrame) { tab.url = url; this.emit(); } });
+    wc.on('page-favicon-updated', (_e, favicons) =&gt; { tab.favicon = favicons[0] ?? null; this.emit(); });
+    wc.on('did-start-loading', () =&gt; { tab.loading = true; this.emit(); });
+    wc.on('did-stop-loading', () =&gt; { tab.loading = false; this.emit(); });
+  }
+
+  private emit(): void {
+    this.opts.onChange(this.list());
+  }
+}</code></pre>
+<ul><li>[ ] <strong>Step 2: preload/tabstrip.ts</strong></li></ul>
+<pre><code class="language-ts">import { contextBridge, ipcRenderer } from 'electron';
+
+contextBridge.exposeInMainWorld('tabs', {
+  onState(callback: (tabs: unknown) =&gt; void) {
+    ipcRenderer.on('tabs:state', (_event, tabs) =&gt; callback(tabs));
+    ipcRenderer.send('tabs:ready');
+  },
+  activate(id: number) { ipcRenderer.send('tabs:activate', id); },
+  close(id: number) { ipcRenderer.send('tabs:close', id); },
+  newTab() { ipcRenderer.send('tabs:new'); },
+});</code></pre>
+<ul><li>[ ] <strong>Step 3: shell/ui/tabstrip.html</strong></li></ul>
+<pre><code class="language-html">&lt;!doctype html&gt;
+&lt;html&gt;
+  &lt;head&gt;
+    &lt;meta charset="utf-8" /&gt;
+    &lt;link rel="stylesheet" href="tabstrip.css" /&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;div class="strip"&gt;
+      &lt;div id="tabs" class="tabs"&gt;&lt;/div&gt;
+      &lt;button id="new" class="new" title="New Tab (⌘T)"&gt;+&lt;/button&gt;
+    &lt;/div&gt;
+    &lt;script src="tabstrip.js"&gt;&lt;/script&gt;
+  &lt;/body&gt;
+&lt;/html&gt;</code></pre>
+<ul><li>[ ] <strong>Step 4: shell/ui/tabstrip.css</strong></li></ul>
+<pre><code class="language-css">:root {
+  --bg: #e9e9e9;
+  --tab: #f8f8f8;
+  --fg: #222;
+  --muted: #6f6f6f;
+  --hover: rgba(0, 0, 0, 0.06);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #2a2a2a;
+    --tab: #3b3b3b;
+    --fg: #eee;
+    --muted: #9a9a9a;
+    --hover: rgba(255, 255, 255, 0.08);
+  }
+}
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--fg);
+  font: 12px -apple-system, system-ui, sans-serif;
+  user-select: none;
+}
+.strip {
+  box-sizing: border-box;
+  height: 38px;
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  padding: 0 8px 0 84px;
+  -webkit-app-region: drag;
+}
+.tabs {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  gap: 4px;
+  height: 30px;
+}
+.tab {
+  -webkit-app-region: no-drag;
+  flex: 1 1 0;
+  min-width: 60px;
+  max-width: 220px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 6px 0 10px;
+  border-radius: 8px 8px 0 0;
+  color: var(--muted);
+  overflow: hidden;
+  cursor: default;
+}
+.tab:hover { background: var(--hover); }
+.tab.active { background: var(--tab); color: var(--fg); }
+.tab img { width: 14px; height: 14px; flex: none; }
+.tab .title { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tab.loading .title { opacity: 0.6; }
+.tab .close {
+  -webkit-app-region: no-drag;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border-radius: 4px;
+  font-size: 13px;
+  line-height: 18px;
+  opacity: 0;
+}
+.tab:hover .close, .tab.active .close { opacity: 0.7; }
+.tab .close:hover { background: var(--hover); opacity: 1; }
+.new {
+  -webkit-app-region: no-drag;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  width: 26px;
+  height: 26px;
+  margin-bottom: 2px;
+  border-radius: 6px;
+  font-size: 18px;
+  line-height: 26px;
+  padding: 0;
+}
+.new:hover { background: var(--hover); color: var(--fg); }</code></pre>
+<ul><li>[ ] <strong>Step 5: shell/ui/tabstrip.js</strong></li></ul>
+<pre><code class="language-js">const tabsEl = document.getElementById('tabs');
+document.getElementById('new').addEventListener('click', () =&gt; window.tabs.newTab());
+window.tabs.onState(render);
+
+function render(tabs) {
+  tabsEl.replaceChildren(...tabs.map(tabElement));
+}
+
+function tabElement(tab) {
+  const el = document.createElement('div');
+  el.className = `tab${tab.active ? ' active' : ''}${tab.loading ? ' loading' : ''}`;
+  el.title = tab.url;
+  if (tab.favicon) {
+    const img = document.createElement('img');
+    img.src = tab.favicon;
+    img.alt = '';
+    el.appendChild(img);
+  }
+  const title = document.createElement('span');
+  title.className = 'title';
+  title.textContent = tab.title || tab.url;
+  el.appendChild(title);
+  const close = document.createElement('button');
+  close.className = 'close';
+  close.title = 'Close Tab (⌘W)';
+  close.textContent = '×';
+  close.addEventListener('click', (e) =&gt; { e.stopPropagation(); window.tabs.close(tab.id); });
+  el.appendChild(close);
+  el.addEventListener('click', () =&gt; window.tabs.activate(tab.id));
+  el.addEventListener('auxclick', (e) =&gt; { if (e.button === 1) window.tabs.close(tab.id); });
+  return el;
+}</code></pre>
+<ul><li>[ ] <strong>Step 6: Typecheck and commit</strong></li></ul>
+<p><code>pnpm typecheck</code> clean.</p>
+<pre><code class="language-bash">git add -A &amp;&amp; git commit -m "feat(shell): TabManager with WebContentsView tabs and tab strip UI"</code></pre>
+<hr>
+<h3>Task 8: Menu and full main process</h3>
+<p><strong>Files:</strong></p>
+<ul><li>Create: <code>shell/src/main/menu.ts</code></li><li>Replace: <code>shell/src/main/index.ts</code></li></ul>
+<p><strong>Interfaces:</strong></p>
+<ul><li>Consumes: everything above.</li><li>Produces: <code>interface Commands { newTab; closeTab; nextTab; prevTab; selectTab(index); home; reload; back; forward; zoomIn; zoomOut; zoomReset; toggleDevTools; openInBrowser; copyUrl }</code> and <code>buildMenu(appName: string, commands: Commands): Menu</code>.</li></ul>
+<ul><li>[ ] <strong>Step 1: menu.ts</strong></li></ul>
+<pre><code class="language-ts">import { Menu, type MenuItemConstructorOptions } from 'electron';
+
+export interface Commands {
+  newTab(): void;
+  closeTab(): void;
+  nextTab(): void;
+  prevTab(): void;
+  selectTab(index: number): void;
+  home(): void;
+  reload(): void;
+  back(): void;
+  forward(): void;
+  zoomIn(): void;
+  zoomOut(): void;
+  zoomReset(): void;
+  toggleDevTools(): void;
+  openInBrowser(): void;
+  copyUrl(): void;
+}
+
+export function buildMenu(appName: string, c: Commands): Menu {
+  const selectTabItems: MenuItemConstructorOptions[] = Array.from({ length: 9 }, (_, i) =&gt; ({
+    label: `Select Tab ${i + 1}`,
+    accelerator: `Cmd+${i + 1}`,
+    click: () =&gt; c.selectTab(i),
+  }));
+
+  const template: MenuItemConstructorOptions[] = [
+    {
+      label: appName,
+      submenu: [
+        { role: 'about' }, { type: 'separator' },
+        { role: 'services' }, { type: 'separator' },
+        { role: 'hide' }, { role: 'hideOthers' }, { role: 'unhide' }, { type: 'separator' },
+        { role: 'quit' },
+      ],
+    },
+    {
+      label: 'File',
+      submenu: [
+        { label: 'New Tab', accelerator: 'Cmd+T', click: c.newTab },
+        { label: 'Close Tab', accelerator: 'Cmd+W', click: c.closeTab },
+        { type: 'separator' },
+        { label: 'Copy URL', accelerator: 'Cmd+Shift+C', click: c.copyUrl },
+        { label: 'Open in Browser', accelerator: 'Cmd+Shift+O', click: c.openInBrowser },
+      ],
+    },
+    {
+      label: 'Edit',
+      submenu: [
+        { role: 'undo' }, { role: 'redo' }, { type: 'separator' },
+        { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'pasteAndMatchStyle' },
+        { role: 'delete' }, { role: 'selectAll' },
+      ],
+    },
+    {
+      label: 'View',
+      submenu: [
+        { label: 'Reload', accelerator: 'Cmd+R', click: c.reload },
+        { label: 'Home', accelerator: 'Cmd+Shift+H', click: c.home },
+        { type: 'separator' },
+        { label: 'Zoom In', accelerator: 'Cmd+Plus', click: c.zoomIn },
+        { label: 'Zoom Out', accelerator: 'Cmd+-', click: c.zoomOut },
+        { label: 'Actual Size', accelerator: 'Cmd+0', click: c.zoomReset },
+        { type: 'separator' },
+        { label: 'Toggle Developer Tools', accelerator: 'Alt+Cmd+I', click: c.toggleDevTools },
+        { type: 'separator' },
+        { role: 'togglefullscreen' },
+      ],
+    },
+    {
+      label: 'History',
+      submenu: [
+        { label: 'Back', accelerator: 'Cmd+[', click: c.back },
+        { label: 'Forward', accelerator: 'Cmd+]', click: c.forward },
+      ],
+    },
+    {
+      label: 'Window',
+      role: 'windowMenu',
+      submenu: [
+        { role: 'minimize' }, { role: 'zoom' }, { type: 'separator' },
+        { label: 'Show Previous Tab', accelerator: 'Cmd+Shift+[', click: c.prevTab },
+        { label: 'Show Next Tab', accelerator: 'Cmd+Shift+]', click: c.nextTab },
+        { type: 'separator' },
+        ...selectTabItems,
+        { type: 'separator' },
+        { role: 'front' },
+      ],
+    },
+  ];
+  return Menu.buildFromTemplate(template);
+}</code></pre>
+<ul><li>[ ] <strong>Step 2: index.ts (final)</strong></li></ul>
+<pre><code class="language-ts">import { app, BaseWindow, clipboard, ipcMain, Menu, WebContentsView } from 'electron';
+import { execFile } from 'node:child_process';
+import path from 'node:path';
+import { parseHttpUrl } from '../shared/matcher';
+import { resolveSiteConfig, type SiteConfig } from '../shared/site';
+import { buildMenu } from './menu';
+import { attachNavigationPolicy } from './navigation';
+import { createStateStore, type StateStore } from './state';
+import { TabManager } from './tabs';
+import { chromeUserAgent } from './user-agent';
+
+interface AppWindow {
+  openUrl(url: string): void;
+  focus(): void;
+  tabs: TabManager;
+  window: BaseWindow;
+}
+
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+} else {
+  main();
+}
+
+function main(): void {
+  const site = resolveSiteConfig({
+    resourcesPath: process.resourcesPath,
+    siteId: process.env.WEBAPPS_SITE,
+    sitesFile: path.join(app.getAppPath(), 'sites.json'),
+  });
+
+  app.setName(site.name);
+  const dataDir = path.join(app.getPath('appData'), site.name);
+  app.setPath('userData', dataDir);
+  app.setPath('sessionData', dataDir);
+  app.userAgentFallback = chromeUserAgent(process.versions.chrome);
+
+  const store = createStateStore(path.join(dataDir, 'state.json'));
+  const pending: string[] = [];
+  let appWindow: AppWindow | null = null;
+
+  const openIncoming = (url: string) =&gt; {
+    if (appWindow) appWindow.openUrl(url);
+    else pending.push(url);
+  };
+
+  app.on('open-url', (event, url) =&gt; {
+    event.preventDefault();
+    openIncoming(url);
+  });
+
+  app.on('second-instance', (_event, argv) =&gt; {
+    const urls = argv.filter((arg) =&gt; parseHttpUrl(arg) !== null);
+    if (urls.length === 0) appWindow?.focus();
+    for (const url of urls) openIncoming(url);
+  });
+
+  app.on('activate', () =&gt; {
+    if (!appWindow) appWindow = createAppWindow(site, store, () =&gt; { appWindow = null; });
+    appWindow.focus();
+  });
+
+  app.on('window-all-closed', () =&gt; {
+    // Stay in the Dock like a normal macOS app; 'activate' recreates the window.
+  });
+
+  void app.whenReady().then(() =&gt; {
+    appWindow = createAppWindow(site, store, () =&gt; { appWindow = null; });
+    Menu.setApplicationMenu(buildMenu(site.name, commandsFor(site, () =&gt; appWindow)));
+    for (const url of pending.splice(0)) appWindow.openUrl(url);
+  });
+}
+
+function createAppWindow(site: SiteConfig, store: StateStore, onClosed: () =&gt; void): AppWindow {
+  const saved = store.load();
+  const window = new BaseWindow({
+    ...(saved.bounds ?? { width: 1280, height: 860 }),
+    minWidth: 600,
+    minHeight: 400,
+    title: site.name,
+    titleBarStyle: 'hiddenInset',
+    trafficLightPosition: { x: 14, y: 12 },
+    show: false,
+  });
+
+  const strip = new WebContentsView({
+    webPreferences: {
+      preload: path.join(__dirname, '../preload/tabstrip.js'),
+      contextIsolation: true,
+      sandbox: true,
+    },
+  });
+  void strip.webContents.loadFile(path.join(app.getAppPath(), 'shell/ui/tabstrip.html'));
+
+  const persist = () =&gt; store.save({ bounds: window.getBounds(), tabs: tabs.urls(), activeIndex: tabs.activeIndex() });
+
+  const tabs: TabManager = new TabManager({
+    window,
+    strip,
+    onChange: (list) =&gt; {
+      strip.webContents.send('tabs:state', list);
+      persist();
+    },
+    onTabCreated: (wc) =&gt; attachNavigationPolicy(wc, site, { openTab: (url) =&gt; void tabs.newTab(url, true) }),
+    onEmpty: () =&gt; window.close(),
+  });
+
+  const handlers = {
+    'tabs:ready': () =&gt; strip.webContents.send('tabs:state', tabs.list()),
+    'tabs:activate': (_e: unknown, id: number) =&gt; tabs.activate(id),
+    'tabs:close': (_e: unknown, id: number) =&gt; tabs.close(id),
+    'tabs:new': () =&gt; void tabs.newTab(site.home, true),
+  } as const;
+  for (const [channel, handler] of Object.entries(handlers)) ipcMain.on(channel, handler as never);
+
+  const initialTabs = saved.tabs.length &gt; 0 ? saved.tabs : [site.home];
+  initialTabs.forEach((url, index) =&gt; tabs.newTab(url, index === saved.activeIndex));
+
+  window.on('moved', persist);
+  window.on('resized', persist);
+  window.on('close', () =&gt; {
+    persist();
+    store.flush();
+  });
+  window.on('closed', () =&gt; {
+    for (const channel of Object.keys(handlers)) ipcMain.removeAllListeners(channel);
+    tabs.destroy();
+    onClosed();
+  });
+  window.show();
+
+  return {
+    window,
+    tabs,
+    openUrl(url) {
+      tabs.newTab(url, true);
+      this.focus();
+    },
+    focus() {
+      if (window.isMinimized()) window.restore();
+      window.show();
+      window.focus();
+      app.focus({ steal: true });
+    },
+  };
+}
+
+function commandsFor(site: SiteConfig, current: () =&gt; AppWindow | null) {
+  const wc = () =&gt; current()?.tabs.activeWebContents ?? null;
+  const ensure = (): AppWindow =&gt; {
+    const w = current();
+    if (w) return w;
+    app.emit('activate');
+    return current()!;
+  };
+  return {
+    newTab: () =&gt; void ensure().tabs.newTab(site.home, true),
+    closeTab: () =&gt; current()?.tabs.closeActive(),
+    nextTab: () =&gt; current()?.tabs.next(),
+    prevTab: () =&gt; current()?.tabs.prev(),
+    selectTab: (index: number) =&gt; current()?.tabs.activateIndex(index),
+    home: () =&gt; void wc()?.loadURL(site.home),
+    reload: () =&gt; wc()?.reload(),
+    back: () =&gt; { const w = wc(); if (w?.navigationHistory.canGoBack()) w.navigationHistory.goBack(); },
+    forward: () =&gt; { const w = wc(); if (w?.navigationHistory.canGoForward()) w.navigationHistory.goForward(); },
+    zoomIn: () =&gt; { const w = wc(); if (w) w.setZoomLevel(w.getZoomLevel() + 0.5); },
+    zoomOut: () =&gt; { const w = wc(); if (w) w.setZoomLevel(w.getZoomLevel() - 0.5); },
+    zoomReset: () =&gt; wc()?.setZoomLevel(0),
+    toggleDevTools: () =&gt; wc()?.toggleDevTools(),
+    openInBrowser: () =&gt; {
+      const url = wc()?.getURL();
+      if (url) execFile('open', ['-b', site.fallbackBrowser, url]);
+    },
+    copyUrl: () =&gt; {
+      const url = wc()?.getURL();
+      if (url) clipboard.writeText(url);
+    },
+  };
+}</code></pre>
+<ul><li>[ ] <strong>Step 3: Run in dev and check behavior</strong></li></ul>
+<pre><code class="language-bash">SITE=github pnpm dev</code></pre>
+<p>Check: window with tab strip, GitHub loads, Cmd+T opens a second tab, Cmd+W closes it, clicking a link to an external site opens Brave (default browser today), tab titles/favicons update, quit and relaunch restores tabs. Fix anything broken before proceeding.</p>
+<ul><li>[ ] <strong>Step 4: Rebuild all apps and re-verify open-url</strong></li></ul>
+<pre><code class="language-bash">pnpm build &amp;&amp; open dist/GitHub.app &amp;&amp; sleep 4 &amp;&amp; open -b dev.nick.webapps.github "https://github.com/electron/electron"</code></pre>
+<p>Expected: a new tab in the GitHub app with electron/electron.</p>
+<ul><li>[ ] <strong>Step 5: Commit</strong></li></ul>
+<pre><code class="language-bash">git add -A &amp;&amp; git commit -m "feat(shell): application menu, incoming URL handling, tab restore"</code></pre>
+<hr>
+<h3>Task 9: Swift LinkRouter</h3>
+<p><strong>Files:</strong></p>
+<ul><li>Create: <code>router/Sources/main.swift</code>, <code>router/Info.plist</code>, <code>router/build.sh</code>, <code>router/test.sh</code></li></ul>
+<p><strong>Interfaces:</strong></p>
+<ul><li>Consumes: <code>dist/routes.json</code> from <code>scripts/gen-routes.ts</code> (Task 4) and <code>shell/fixtures/routing-fixtures.json</code> (Task 2).</li><li>Produces: <code>dist/LinkRouter.app</code>. CLI: <code>LinkRouter --dry-run &lt;url&gt;...</code> prints <code>&lt;url&gt; -&gt; &lt;bundleId&gt;</code>; <code>LinkRouter --set-default</code> registers for http/https. Env <code>LINKROUTER_CONFIG</code> overrides the config path (default <code>~/.config/webapps/routes.json</code>).</li></ul>
+<ul><li>[ ] <strong>Step 1: Info.plist</strong></li></ul>
+<pre><code class="language-xml">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"&gt;
+&lt;plist version="1.0"&gt;
+&lt;dict&gt;
+  &lt;key&gt;CFBundleDevelopmentRegion&lt;/key&gt;&lt;string&gt;en&lt;/string&gt;
+  &lt;key&gt;CFBundleExecutable&lt;/key&gt;&lt;string&gt;LinkRouter&lt;/string&gt;
+  &lt;key&gt;CFBundleIdentifier&lt;/key&gt;&lt;string&gt;dev.nick.webapps.linkrouter&lt;/string&gt;
+  &lt;key&gt;CFBundleInfoDictionaryVersion&lt;/key&gt;&lt;string&gt;6.0&lt;/string&gt;
+  &lt;key&gt;CFBundleName&lt;/key&gt;&lt;string&gt;LinkRouter&lt;/string&gt;
+  &lt;key&gt;CFBundleDisplayName&lt;/key&gt;&lt;string&gt;LinkRouter&lt;/string&gt;
+  &lt;key&gt;CFBundlePackageType&lt;/key&gt;&lt;string&gt;APPL&lt;/string&gt;
+  &lt;key&gt;CFBundleShortVersionString&lt;/key&gt;&lt;string&gt;1.0&lt;/string&gt;
+  &lt;key&gt;CFBundleVersion&lt;/key&gt;&lt;string&gt;1&lt;/string&gt;
+  &lt;key&gt;LSMinimumSystemVersion&lt;/key&gt;&lt;string&gt;13.0&lt;/string&gt;
+  &lt;key&gt;LSUIElement&lt;/key&gt;&lt;true/&gt;
+  &lt;key&gt;NSHighResolutionCapable&lt;/key&gt;&lt;true/&gt;
+  &lt;key&gt;NSPrincipalClass&lt;/key&gt;&lt;string&gt;NSApplication&lt;/string&gt;
+  &lt;key&gt;CFBundleURLTypes&lt;/key&gt;
+  &lt;array&gt;
+    &lt;dict&gt;
+      &lt;key&gt;CFBundleURLName&lt;/key&gt;&lt;string&gt;Web URL&lt;/string&gt;
+      &lt;key&gt;CFBundleURLSchemes&lt;/key&gt;
+      &lt;array&gt;&lt;string&gt;http&lt;/string&gt;&lt;string&gt;https&lt;/string&gt;&lt;/array&gt;
+      &lt;key&gt;LSHandlerRank&lt;/key&gt;&lt;string&gt;Default&lt;/string&gt;
+    &lt;/dict&gt;
+  &lt;/array&gt;
+  &lt;key&gt;CFBundleDocumentTypes&lt;/key&gt;
+  &lt;array&gt;
+    &lt;dict&gt;
+      &lt;key&gt;CFBundleTypeName&lt;/key&gt;&lt;string&gt;HTML document&lt;/string&gt;
+      &lt;key&gt;CFBundleTypeRole&lt;/key&gt;&lt;string&gt;Viewer&lt;/string&gt;
+      &lt;key&gt;LSItemContentTypes&lt;/key&gt;
+      &lt;array&gt;&lt;string&gt;public.html&lt;/string&gt;&lt;string&gt;public.xhtml&lt;/string&gt;&lt;/array&gt;
+    &lt;/dict&gt;
+  &lt;/array&gt;
+&lt;/dict&gt;
+&lt;/plist&gt;</code></pre>
+<ul><li>[ ] <strong>Step 2: main.swift</strong></li></ul>
+<pre><code class="language-swift">import AppKit
+import Foundation
+
+// MARK: - Config
+
+struct Route: Decodable {
+    let bundleId: String
+    let match: [String]
+}
+
+struct Config: Decodable {
+    let fallback: String
+    let routes: [Route]
+}
+
+let safariBundleId = "com.apple.Safari"
+let ownBundleId = Bundle.main.bundleIdentifier ?? "dev.nick.webapps.linkrouter"
+
+func configPath() -&gt; URL {
+    if let env = ProcessInfo.processInfo.environment["LINKROUTER_CONFIG"], !env.isEmpty {
+        return URL(fileURLWithPath: env)
+    }
+    return FileManager.default.homeDirectoryForCurrentUser
+        .appendingPathComponent(".config/webapps/routes.json")
+}
+
+func loadConfig() -&gt; Config {
+    let path = configPath()
+    do {
+        let data = try Data(contentsOf: path)
+        var config = try JSONDecoder().decode(Config.self, from: data)
+        if config.fallback == ownBundleId {
+            log("fallback points at LinkRouter itself; using Safari")
+            config = Config(fallback: safariBundleId, routes: config.routes)
+        }
+        return config
+    } catch {
+        log("config error at \(path.path): \(error); routing everything to Safari")
+        return Config(fallback: safariBundleId, routes: [])
+    }
+}
+
+// MARK: - Logging
+
+func log(_ message: String) {
+    let line = "\(ISO8601DateFormatter().string(from: Date())) \(message)\n"
+    let file = FileManager.default.homeDirectoryForCurrentUser
+        .appendingPathComponent("Library/Logs/LinkRouter.log")
+    if let handle = try? FileHandle(forWritingTo: file) {
+        handle.seekToEndOfFile()
+        handle.write(Data(line.utf8))
+        try? handle.close()
+    } else {
+        try? line.write(to: file, atomically: true, encoding: .utf8)
+    }
+}
+
+// MARK: - Matching (mirrors shell/src/shared/matcher.ts)
+
+struct HostPattern {
+    let host: String
+    let wildcard: Bool
+    let pathPrefix: String?
+
+    init(_ raw: String) {
+        var text = raw.trimmingCharacters(in: .whitespaces).lowercased()
+        var prefix: String? = nil
+        if let slash = text.firstIndex(of: "/") {
+            prefix = String(text[slash...])
+            text = String(text[..&lt;slash])
+        }
+        if text.hasPrefix("*.") {
+            wildcard = true
+            host = String(text.dropFirst(2))
+        } else {
+            wildcard = false
+            host = text
+        }
+        pathPrefix = prefix
+    }
+
+    func matches(_ url: URL) -&gt; Bool {
+        guard let urlHost = url.host?.lowercased() else { return false }
+        let hostOk = wildcard ? urlHost.hasSuffix("." + host) : urlHost == host
+        guard hostOk else { return false }
+        guard let prefix = pathPrefix else { return true }
+        return url.path.hasPrefix(prefix)
+    }
+}
+
+func parseHttpUrl(_ text: String) -&gt; URL? {
+    guard let url = URL(string: text),
+          let scheme = url.scheme?.lowercased(),
+          scheme == "http" || scheme == "https",
+          url.host != nil else { return nil }
+    return url
+}
+
+func unwrapRedirect(_ url: URL) -&gt; URL {
+    guard url.host?.lowercased() == "www.google.com", url.path == "/url",
+          let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+          let items = components.queryItems,
+          let target = items.first(where: { $0.name == "q" })?.value
+            ?? items.first(where: { $0.name == "url" })?.value,
+          let unwrapped = parseHttpUrl(target) else { return url }
+    return unwrapped
+}
+
+func normalize(_ text: String) -&gt; URL? {
+    guard let url = parseHttpUrl(text) else { return nil }
+    return unwrapRedirect(url)
+}
+
+func target(for text: String, config: Config) -&gt; String {
+    guard let url = normalize(text) else { return config.fallback }
+    for route in config.routes {
+        for pattern in route.match where HostPattern(pattern).matches(url) {
+            return route.bundleId
+        }
+    }
+    return config.fallback
+}
+
+// MARK: - Opening
+
+func appURL(for bundleId: String) -&gt; URL? {
+    NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleId)
+}
+
+func open(_ url: URL, config: Config, completion: @escaping () -&gt; Void) {
+    let chosen = target(for: url.absoluteString, config: config)
+    let destination = appURL(for: chosen) ?? appURL(for: config.fallback) ?? appURL(for: safariBundleId)
+    guard let app = destination else {
+        log("no app found for \(chosen) or fallback; giving up on \(url)")
+        completion()
+        return
+    }
+    let deliver = unwrapRedirect(url)
+    log("\(url.absoluteString) -&gt; \(chosen) (\(app.lastPathComponent))")
+    let configuration = NSWorkspace.OpenConfiguration()
+    configuration.activates = true
+    NSWorkspace.shared.open([deliver], withApplicationAt: app, configuration: configuration) { _, error in
+        if let error = error { log("open failed: \(error)") }
+        completion()
+    }
+}
+
+// MARK: - CLI modes
+
+func runDryRun(_ urls: [String]) {
+    let config = loadConfig()
+    for text in urls {
+        print("\(text) -&gt; \(target(for: text, config: config))")
+    }
+}
+
+func runSetDefault() {
+    let group = DispatchGroup()
+    for scheme in ["http", "https"] {
+        group.enter()
+        NSWorkspace.shared.setDefaultApplication(at: Bundle.main.bundleURL, toOpenURLsWithScheme: scheme) { error in
+            if let error = error {
+                print("failed to set default for \(scheme): \(error.localizedDescription)")
+            } else {
+                print("LinkRouter is now the default handler for \(scheme)")
+            }
+            group.leave()
+        }
+    }
+    while group.wait(timeout: .now()) == .timedOut {
+        RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.1))
+    }
+}
+
+// MARK: - App delegate
+
+final class RouterDelegate: NSObject, NSApplicationDelegate {
+    private let config = loadConfig()
+    private var inFlight = 0
+    private var receivedAny = false
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        // Launched with no URL (e.g. double-clicked): exit quietly.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
+            if self?.receivedAny == false { NSApp.terminate(nil) }
+        }
+    }
+
+    func application(_ application: NSApplication, open urls: [URL]) {
+        receivedAny = true
+        for url in urls {
+            inFlight += 1
+            open(url, config: config) { [weak self] in
+                DispatchQueue.main.async {
+                    guard let self = self else { return }
+                    self.inFlight -= 1
+                    if self.inFlight == 0 { NSApp.terminate(nil) }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Entry
+
+let arguments = Array(CommandLine.arguments.dropFirst())
+if let first = arguments.first, first == "--dry-run" {
+    runDryRun(Array(arguments.dropFirst()))
+    exit(0)
+} else if arguments.first == "--set-default" {
+    runSetDefault()
+    exit(0)
+} else {
+    let application = NSApplication.shared
+    let delegate = RouterDelegate()
+    application.delegate = delegate
+    application.run()
+}</code></pre>
+<ul><li>[ ] <strong>Step 3: build.sh</strong> (chmod +x)</li></ul>
+<pre><code class="language-bash">#!/usr/bin/env bash
+# Compile LinkRouter and assemble dist/LinkRouter.app.
+set -euo pipefail
+HERE="$(cd "$(dirname "$0")" &amp;&amp; pwd)"
+APP="$HERE/../dist/LinkRouter.app"
+rm -rf "$APP"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+swiftc -O -swift-version 5 -o "$APP/Contents/MacOS/LinkRouter" "$HERE/Sources/main.swift"
+cp "$HERE/Info.plist" "$APP/Contents/Info.plist"
+printf 'APPL????' &gt; "$APP/Contents/PkgInfo"
+codesign --force --sign - "$APP"
+echo "$APP"</code></pre>
+<ul><li>[ ] <strong>Step 4: test.sh</strong> (chmod +x)</li></ul>
+<pre><code class="language-bash">#!/usr/bin/env bash
+# Run the shared routing fixtures through LinkRouter --dry-run.
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/.." &amp;&amp; pwd)"
+BIN="$ROOT/dist/LinkRouter.app/Contents/MacOS/LinkRouter"
+FIXTURES="$ROOT/shell/fixtures/routing-fixtures.json"
+export LINKROUTER_CONFIG="$ROOT/dist/routes.json"
+
+[ -x "$BIN" ] || "$ROOT/router/build.sh" &gt;/dev/null
+[ -f "$LINKROUTER_CONFIG" ] || (cd "$ROOT" &amp;&amp; pnpm -s gen-routes &gt;/dev/null)
+
+expected="$(/usr/bin/python3 - "$ROOT/sites.json" "$FIXTURES" &lt;&lt;'PY'
+import json, sys
+sites = json.load(open(sys.argv[1]))
+cases = json.load(open(sys.argv[2]))["cases"]
+for c in cases:
+    target = f'{sites["bundleIdPrefix"]}.{c["route"]}' if c["route"] else sites["fallbackBrowser"]
+    print(f'{c["url"]} -&gt; {target}')
+PY
+)"
+
+args=()
+while IFS= read -r url; do args+=("$url"); done &lt; &lt;(
+  /usr/bin/python3 -c 'import json,sys
+for c in json.load(open(sys.argv[1]))["cases"]: print(c["url"])' "$FIXTURES")
+
+actual="$("$BIN" --dry-run "${args[@]}")"
+
+if diff &lt;(echo "$expected") &lt;(echo "$actual"); then
+  echo "router: ${#args[@]} fixtures OK"
+else
+  echo "router: fixture mismatch" &gt;&amp;2
+  exit 1
+fi</code></pre>
+<ul><li>[ ] <strong>Step 5: Build and test</strong></li></ul>
+<pre><code class="language-bash">chmod +x router/build.sh router/test.sh &amp;&amp; router/build.sh &amp;&amp; pnpm -s gen-routes &amp;&amp; router/test.sh</code></pre>
+<p>Expected: <code>router: 16 fixtures OK</code>. Then live check without changing the default browser:</p>
+<pre><code class="language-bash">open -b dev.nick.webapps.linkrouter "https://github.com/electron/electron" &amp;&amp; sleep 2 &amp;&amp; tail -3 ~/Library/Logs/LinkRouter.log</code></pre>
+<p>Expected: log line <code>https://github.com/electron/electron -&gt; dev.nick.webapps.github (GitHub.app)</code> and the GitHub app (built in Task 8) shows the tab. Note the router only finds the app if <code>dist/GitHub.app</code> has been launched once (Launch Services registration) or is in <code>/Applications</code>; <code>open dist/GitHub.app</code> first if needed.</p>
+<ul><li>[ ] <strong>Step 6: Commit</strong></li></ul>
+<pre><code class="language-bash">git add -A &amp;&amp; git commit -m "feat(router): Swift LinkRouter default browser with fixture tests"</code></pre>
+<hr>
+<h3>Task 10: install.sh and README</h3>
+<p><strong>Files:</strong></p>
+<ul><li>Create: <code>scripts/install.sh</code>, <code>README.md</code></li></ul>
+<ul><li>[ ] <strong>Step 1: install.sh</strong> (chmod +x)</li></ul>
+<pre><code class="language-bash">#!/usr/bin/env bash
+# Build everything, install into /Applications, write router config, set LinkRouter as default browser.
+# Usage: scripts/install.sh [siteId...]   (no args = all sites)
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/.." &amp;&amp; pwd)"
+cd "$ROOT"
+export PATH="$HOME/.local/share/mise/shims:$PATH"
+LSREGISTER=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
+
+pnpm install
+ls icons/*.icns &gt;/dev/null 2&gt;&amp;1 || scripts/fetch-icons.sh
+pnpm build "$@"
+pnpm -s gen-routes
+router/build.sh
+
+for app in dist/*.app; do
+  name="$(basename "$app")"
+  pkill -f "/Applications/$name/Contents/MacOS/" 2&gt;/dev/null || true
+  rm -rf "/Applications/$name"
+  ditto "$app" "/Applications/$name"
+  "$LSREGISTER" -f "/Applications/$name"
+  echo "installed /Applications/$name"
+done
+
+mkdir -p "$HOME/.config/webapps"
+cp dist/routes.json "$HOME/.config/webapps/routes.json"
+echo "wrote ~/.config/webapps/routes.json"
+
+echo
+echo "Setting LinkRouter as the default browser. macOS will show a confirmation dialog."
+/Applications/LinkRouter.app/Contents/MacOS/LinkRouter --set-default</code></pre>
+<ul><li>[ ] <strong>Step 2: README.md</strong></li></ul>
+<pre><code class="language-markdown"># webapps
+
+Gmail, Google Calendar, and GitHub as standalone tabbed macOS apps, plus
+`LinkRouter.app`, a tiny default browser that sends links clicked anywhere
+on the Mac to the matching app. Anything that matches no app goes to Brave.
+
+## Install
+
+    scripts/install.sh
+
+Builds all apps and the router, copies them into `/Applications`, writes
+`~/.config/webapps/routes.json`, and asks macOS to make LinkRouter the
+default browser (confirm the dialog). Sign in to Google once in Gmail and
+once in Google Calendar; each app has its own cookie store.
+
+## Daily use
+
+- Cmd+T new tab, Cmd+W close tab, Cmd+1..9 select tab, Cmd+Shift+[ / ] previous/next tab.
+- Cmd+[ / ] back/forward, Cmd+R reload, Cmd+Shift+H home.
+- Cmd+Shift+O opens the current page in Brave. Cmd+Shift+C copies its URL.
+- Links to other sites open in Brave (via LinkRouter). Links to a site that
+  has its own app open there.
+- Quitting and relaunching restores your tabs.
+
+## Adding a site
+
+1. Add an entry to `sites.json` (`id`, `name`, `home`, `match`, `allow`, `icon`).
+   `match` hosts are routed to the app and stay in it; `allow` hosts stay in
+   the app (login pages) but are not routed to it. `*.example.com` matches
+   subdomains only; list the apex separately.
+2. `scripts/fetch-icons.sh` then `scripts/install.sh`.
+
+## How routing works
+
+macOS has one default browser slot. `LinkRouter.app` occupies it, reads
+`~/.config/webapps/routes.json`, and opens each URL with the matching app's
+bundle id via Launch Services, or with the fallback browser. It logs every
+decision to `~/Library/Logs/LinkRouter.log`. Gmail's `google.com/url?q=`
+redirector is unwrapped before matching.
+
+    dist/LinkRouter.app/Contents/MacOS/LinkRouter --dry-run https://github.com/x
+
+## Development
+
+    pnpm install
+    pnpm test            # matcher, policy, state tests
+    router/test.sh       # same fixtures through the Swift router
+    SITE=github pnpm dev # run one site unpackaged
+    pnpm build [siteId]  # dist/&lt;Name&gt;.app
+
+## Undo
+
+System Settings → Desktop &amp; Dock → Default web browser → Brave. Delete the
+apps from `/Applications` and `~/Library/Application Support/&lt;App Name&gt;`.</code></pre>
+<ul><li>[ ] <strong>Step 3: Commit</strong></li></ul>
+<pre><code class="language-bash">chmod +x scripts/install.sh &amp;&amp; git add -A &amp;&amp; git commit -m "feat: install script and README"</code></pre>
+<hr>
+<h3>Task 11: Install and smoke test</h3>
+<ul><li>[ ] <strong>Step 1: Run the installer</strong></li></ul>
+<pre><code class="language-bash">scripts/install.sh</code></pre>
+<p>Confirm the macOS default-browser dialog when it appears.</p>
+<ul><li>[ ] <strong>Step 2: Smoke checks</strong></li></ul>
+<pre><code class="language-bash">open -b dev.nick.webapps.github "https://github.com/electron/electron"   # tab in GitHub app
+open "https://github.com/electron/electron"                              # via router → GitHub app
+open "https://calendar.google.com/"                                      # via router → Calendar app
+open "https://example.com/"                                              # via router → Brave
+tail -5 ~/Library/Logs/LinkRouter.log</code></pre>
+<ul><li>[ ] <strong>Step 3: Manual checks (user)</strong></li></ul>
+<p>Sign in to Gmail inside the Gmail app; confirm no "browser not secure" page. Click a GitHub link inside an email; confirm it lands in the GitHub app.</p>
+<ul><li>[ ] <strong>Step 4: Final commit if anything changed</strong></li></ul>
+<pre><code class="language-bash">git status --short &amp;&amp; git add -A &amp;&amp; git commit -m "fix: smoke-test follow-ups" || true</code></pre>
+</body></html>
