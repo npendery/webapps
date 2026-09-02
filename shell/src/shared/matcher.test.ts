@@ -97,6 +97,12 @@ describe('scope', () => {
     // allow-only: the router must never send Okta links to Gmail
     expect(isMatch(gmail, oktaStep)).toBe(false);
   });
+  test('Okta SSO hops stay in-app for GitHub too', () => {
+    const oktaGithub = 'https://homebot.okta.com/app/github/exk123/sso/saml?SAMLRequest=x';
+    expect(isInScope(github, oktaGithub)).toBe(true);
+    expect(isMatch(github, oktaGithub)).toBe(false);
+    expect(isInScope(github, 'https://github.com/orgs/homebot/saml/consume')).toBe(true);
+  });
   test('Workspace SAML assertion consumer (www.google.com/a/<domain>/acs) stays in-app, rest of www.google.com does not', () => {
     const calendar = sitesFile.sites.find((s) => s.id === 'calendar')!;
     const acs = 'https://www.google.com/a/homebot.ai/acs';

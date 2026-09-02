@@ -23,7 +23,7 @@
       "name": "GitHub",
       "home": "https://github.com/",
       "match": ["github.com", "*.github.com"],
-      "allow": ["*.githubusercontent.com"],
+      "allow": ["*.githubusercontent.com", "*.okta.com"],
       "icon": "https://github.com/fluidicon.png"
     }
   ]
