@@ -17,6 +17,13 @@ router/build.sh
 
 for app in dist/*.app; do
   name="$(basename "$app")"
+  if [ -d "/Applications/$name" ]; then
+    existing="$(defaults read "/Applications/$name/Contents/Info.plist" CFBundleIdentifier 2>/dev/null || true)"
+    case "$existing" in
+      dev.nick.webapps.*) ;;
+      *) echo "refusing to overwrite /Applications/$name (bundle id '$existing' is not ours)" >&2; exit 1 ;;
+    esac
+  fi
   pkill -f "/Applications/$name/Contents/MacOS/" 2>/dev/null || true
   rm -rf "/Applications/$name"
   ditto "$app" "/Applications/$name"
