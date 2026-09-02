@@ -1,0 +1,29 @@
+{
+  "name": "webapps",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Site-specific Electron apps with a link router",
+  "author": "Nick Pendery <nick@homebot.ai>",
+  "main": "shell/out/main/index.js",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "compile": "tsc",
+    "dev": "pnpm compile && WEBAPPS_SITE=${SITE:-gmail} electron .",
+    "gen-routes": "tsx scripts/gen-routes.ts",
+    "icons": "scripts/fetch-icons.sh",
+    "build": "pnpm compile && tsx scripts/build-apps.ts",
+    "install-apps": "scripts/install.sh"
+  },
+  "devDependencies": {
+    "@types/node": "^24",
+    "electron": "^44.1.1",
+    "electron-builder": "^26.15.3",
+    "tsx": "^4.23.13",
+    "typescript": "~5.9",
+    "vitest": "^4.1.11"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["electron"]
+  }
+}

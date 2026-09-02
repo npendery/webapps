@@ -1,0 +1,30 @@
+{
+  "fallbackBrowser": "com.brave.browser",
+  "bundleIdPrefix": "dev.nick.webapps",
+  "sites": [
+    {
+      "id": "gmail",
+      "name": "Gmail",
+      "home": "https://mail.google.com/",
+      "match": ["mail.google.com"],
+      "allow": ["accounts.google.com", "accounts.youtube.com", "myaccount.google.com", "ogs.google.com"],
+      "icon": "https://www.gstatic.com/images/branding/product/2x/gmail_2020q4_512dp.png"
+    },
+    {
+      "id": "calendar",
+      "name": "Google Calendar",
+      "home": "https://calendar.google.com/",
+      "match": ["calendar.google.com"],
+      "allow": ["accounts.google.com", "accounts.youtube.com", "myaccount.google.com", "ogs.google.com"],
+      "icon": "https://www.gstatic.com/images/branding/product/2x/calendar_2020q4_512dp.png"
+    },
+    {
+      "id": "github",
+      "name": "GitHub",
+      "home": "https://github.com/",
+      "match": ["github.com", "*.github.com"],
+      "allow": ["*.githubusercontent.com"],
+      "icon": "https://github.com/fluidicon.png"
+    }
+  ]
+}
