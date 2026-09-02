@@ -1,0 +1,116 @@
+:root {
+  --bg: #e9e9e9;
+  --tab: #f8f8f8;
+  --fg: #222;
+  --muted: #6f6f6f;
+  --hover: rgba(0, 0, 0, 0.06);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #2a2a2a;
+    --tab: #3b3b3b;
+    --fg: #eee;
+    --muted: #9a9a9a;
+    --hover: rgba(255, 255, 255, 0.08);
+  }
+}
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--fg);
+  font: 12px -apple-system, system-ui, sans-serif;
+  user-select: none;
+}
+.strip {
+  box-sizing: border-box;
+  height: 38px;
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  padding: 0 8px 0 84px;
+  -webkit-app-region: drag;
+}
+.tabs {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  gap: 4px;
+  height: 30px;
+}
+.tab {
+  -webkit-app-region: no-drag;
+  flex: 1 1 0;
+  min-width: 60px;
+  max-width: 220px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 6px 0 10px;
+  border-radius: 8px 8px 0 0;
+  color: var(--muted);
+  overflow: hidden;
+  cursor: default;
+}
+.tab:hover {
+  background: var(--hover);
+}
+.tab.active {
+  background: var(--tab);
+  color: var(--fg);
+}
+.tab img {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+.tab .title {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tab.loading .title {
+  opacity: 0.6;
+}
+.tab .close {
+  -webkit-app-region: no-drag;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border-radius: 4px;
+  font-size: 13px;
+  line-height: 18px;
+  opacity: 0;
+}
+.tab:hover .close,
+.tab.active .close {
+  opacity: 0.7;
+}
+.tab .close:hover {
+  background: var(--hover);
+  opacity: 1;
+}
+.new {
+  -webkit-app-region: no-drag;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  width: 26px;
+  height: 26px;
+  margin-bottom: 2px;
+  border-radius: 6px;
+  font-size: 18px;
+  line-height: 26px;
+  padding: 0;
+}
+.new:hover {
+  background: var(--hover);
+  color: var(--fg);
+}
