@@ -1,0 +1,20 @@
+{
+  "cases": [
+    { "url": "https://mail.google.com/mail/u/0/#inbox", "route": "gmail" },
+    { "url": "https://calendar.google.com/calendar/r/week", "route": "calendar" },
+    { "url": "https://github.com/electron/electron", "route": "github" },
+    { "url": "https://gist.github.com/someone/abc", "route": "github" },
+    { "url": "HTTPS://GITHUB.COM/Upper/Case", "route": "github" },
+    { "url": "http://github.com/plain-http", "route": "github" },
+    { "url": "https://www.google.com/url?q=https://github.com/a/b&sa=D&source=gmail", "route": "github" },
+    { "url": "https://www.google.com/url?url=https://calendar.google.com/event", "route": "calendar" },
+    { "url": "https://raw.githubusercontent.com/a/b/main/x.txt", "route": null },
+    { "url": "https://accounts.google.com/signin", "route": null },
+    { "url": "https://docs.google.com/document/d/1", "route": null },
+    { "url": "https://notgithub.com/x", "route": null },
+    { "url": "https://github.com.evil.example/x", "route": null },
+    { "url": "https://example.com/", "route": null },
+    { "url": "ftp://github.com/x", "route": null },
+    { "url": "not a url", "route": null }
+  ]
+}
