@@ -2,6 +2,7 @@ import { app, BaseWindow, clipboard, ipcMain, Menu, WebContentsView } from 'elec
 import { execFile } from 'node:child_process';
 import path from 'node:path';
 import { parseHttpUrl } from '../shared/matcher';
+import { restoreTabs } from '../shared/policy';
 import { resolveSiteConfig, type SiteConfig } from '../shared/site';
 import { buildMenu, type Commands } from './menu';
 import { attachNavigationPolicy } from './navigation';
@@ -122,8 +123,7 @@ function createAppWindow(site: SiteConfig, store: StateStore, onClosed: () => vo
   };
   for (const [channel, handler] of Object.entries(handlers)) ipcMain.on(channel, handler as never);
 
-  const initialTabs = saved.tabs.length > 0 ? saved.tabs : [site.home];
-  initialTabs.forEach((url, index) => tabs.newTab(url, index === saved.activeIndex));
+  restoreTabs(site, site.home, saved.tabs).forEach((url, index) => tabs.newTab(url, index === saved.activeIndex));
 
   window.on('moved', persist);
   window.on('resized', persist);

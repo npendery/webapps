@@ -159,20 +159,21 @@ func runDryRun(_ urls: [String]) {
 }
 
 func runSetDefault() {
-    let group = DispatchGroup()
-    for scheme in ["http", "https"] {
-        group.enter()
+    // One scheme at a time: concurrent calls make the second one fail with
+    // "The file couldn't be opened" even though macOS applies it.
+    for scheme in ["https", "http"] {
+        var done = false
         NSWorkspace.shared.setDefaultApplication(at: Bundle.main.bundleURL, toOpenURLsWithScheme: scheme) { error in
             if let error = error {
                 print("failed to set default for \(scheme): \(error.localizedDescription)")
             } else {
                 print("LinkRouter is now the default handler for \(scheme)")
             }
-            group.leave()
+            done = true
         }
-    }
-    while group.wait(timeout: .now()) == .timedOut {
-        RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.1))
+        while !done {
+            RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.1))
+        }
     }
 }
 

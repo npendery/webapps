@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { decideNavigation, decideWindowOpen } from './policy';
+import { decideNavigation, decideWindowOpen, restoreTabs } from './policy';
 
 const gmail = { id: 'gmail', match: ['mail.google.com'], allow: ['accounts.google.com'] };
 
@@ -18,6 +18,18 @@ describe('decideNavigation', () => {
       action: 'external',
       url: 'https://github.com/a/b',
     });
+  });
+});
+
+describe('restoreTabs', () => {
+  test('keeps in-scope URLs, replaces out-of-scope ones with home, falls back to home when empty', () => {
+    const home = 'https://mail.google.com/';
+    expect(restoreTabs(gmail, home, ['https://mail.google.com/mail/u/0/#sent', 'https://accounts.google.com/x'])).toEqual([
+      'https://mail.google.com/mail/u/0/#sent',
+      'https://accounts.google.com/x',
+    ]);
+    expect(restoreTabs(gmail, home, ['https://workspace.google.com/products/gmail/'])).toEqual([home]);
+    expect(restoreTabs(gmail, home, [])).toEqual([home]);
   });
 });
 

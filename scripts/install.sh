@@ -27,6 +27,8 @@ for app in dist/*.app; do
   pkill -f "/Applications/$name/Contents/MacOS/" 2>/dev/null || true
   rm -rf "/Applications/$name"
   ditto "$app" "/Applications/$name"
+  # Make sure the bundle id resolves to the installed copy, not the one in dist/.
+  "$LSREGISTER" -u "$app" >/dev/null 2>&1 || true
   "$LSREGISTER" -f "/Applications/$name"
   echo "installed /Applications/$name"
 done

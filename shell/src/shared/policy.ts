@@ -19,6 +19,15 @@ export function decideNavigation(site: SiteRules, rawUrl: string): NavDecision {
 }
 
 /**
+ * Tabs to open on launch. A saved URL that drifted out of scope (e.g. a
+ * signed-out redirect to a marketing page) is replaced by the home URL.
+ */
+export function restoreTabs(site: SiteRules, home: string, saved: string[]): string[] {
+  if (saved.length === 0) return [home];
+  return saved.map((url) => (isMatch(site, url) || isAllowed(site, url) ? url : home));
+}
+
+/**
  * Non-http popups (Gmail opens about:blank then navigates) and allow-only
  * hosts (login flows that need window.opener) become real popup windows.
  * Match hosts become tabs. Everything else goes external.
