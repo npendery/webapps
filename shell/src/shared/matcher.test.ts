@@ -97,6 +97,15 @@ describe('scope', () => {
     // allow-only: the router must never send Okta links to Gmail
     expect(isMatch(gmail, oktaStep)).toBe(false);
   });
+  test('Workspace SAML assertion consumer (www.google.com/a/<domain>/acs) stays in-app, rest of www.google.com does not', () => {
+    const calendar = sitesFile.sites.find((s) => s.id === 'calendar')!;
+    const acs = 'https://www.google.com/a/homebot.ai/acs';
+    expect(isInScope(gmail, acs)).toBe(true);
+    expect(isInScope(calendar, acs)).toBe(true);
+    expect(isMatch(gmail, acs)).toBe(false);
+    expect(isInScope(gmail, 'https://www.google.com/search?q=x')).toBe(false);
+    expect(isInScope(gmail, 'https://www.google.com/')).toBe(false);
+  });
   test('isInScope is match or allow', () => {
     expect(isInScope(gmail, 'https://mail.google.com/')).toBe(true);
     expect(isInScope(gmail, 'https://accounts.google.com/')).toBe(true);

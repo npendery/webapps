@@ -7,7 +7,7 @@
       "name": "Gmail",
       "home": "https://mail.google.com/",
       "match": ["mail.google.com"],
-      "allow": ["accounts.google.com", "accounts.youtube.com", "myaccount.google.com", "ogs.google.com", "*.okta.com"],
+      "allow": ["accounts.google.com", "accounts.youtube.com", "myaccount.google.com", "ogs.google.com", "www.google.com/a/", "*.okta.com"],
       "icon": "https://www.gstatic.com/images/branding/product/2x/gmail_2020q4_512dp.png"
     },
     {
@@ -15,7 +15,7 @@
       "name": "Google Calendar",
       "home": "https://calendar.google.com/",
       "match": ["calendar.google.com"],
-      "allow": ["accounts.google.com", "accounts.youtube.com", "myaccount.google.com", "ogs.google.com", "*.okta.com"],
+      "allow": ["accounts.google.com", "accounts.youtube.com", "myaccount.google.com", "ogs.google.com", "www.google.com/a/", "*.okta.com"],
       "icon": "https://www.gstatic.com/images/branding/product/2x/calendar_2020q4_512dp.png"
     },
     {
