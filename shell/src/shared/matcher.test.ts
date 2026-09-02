@@ -88,6 +88,15 @@ describe('scope', () => {
     expect(isAllowed(gmail, 'https://accounts.google.com/')).toBe(true);
     expect(isAllowed(gmail, 'https://mail.google.com/')).toBe(false);
   });
+  test('Okta SSO hops stay in-app for the Google sites', () => {
+    const calendar = sitesFile.sites.find((s) => s.id === 'calendar')!;
+    const oktaStep = 'https://homebot.okta.com/login/sessionCookieRedirect?checkAccountSetupComplete=true&token=x';
+    expect(isInScope(gmail, oktaStep)).toBe(true);
+    expect(isInScope(calendar, oktaStep)).toBe(true);
+    expect(isInScope(gmail, 'https://homebot.okta.com/app/google/abc/sso/saml?SAMLRequest=y')).toBe(true);
+    // allow-only: the router must never send Okta links to Gmail
+    expect(isMatch(gmail, oktaStep)).toBe(false);
+  });
   test('isInScope is match or allow', () => {
     expect(isInScope(gmail, 'https://mail.google.com/')).toBe(true);
     expect(isInScope(gmail, 'https://accounts.google.com/')).toBe(true);
