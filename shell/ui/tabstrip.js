@@ -9,6 +9,7 @@ function render(tabs) {
 function tabElement(tab) {
   const el = document.createElement('div');
   el.className = `tab${tab.active ? ' active' : ''}${tab.loading ? ' loading' : ''}`;
+  el.dataset.id = String(tab.id);
   el.title = tab.url;
   if (tab.favicon) {
     const img = document.createElement('img');
