@@ -127,6 +127,13 @@ func target(for text: String, config: Config) -> String {
 
 // MARK: - Opening
 
+/// Scheme, host and path only. Query strings carry SSO tokens and must not be logged.
+func redacted(_ url: URL) -> String {
+    let scheme = url.scheme ?? "?"
+    let host = url.host ?? "?"
+    return url.query == nil ? "\(scheme)://\(host)\(url.path)" : "\(scheme)://\(host)\(url.path)?…"
+}
+
 func appURL(for bundleId: String) -> URL? {
     NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleId)
 }
@@ -140,7 +147,7 @@ func open(_ url: URL, config: Config, completion: @escaping () -> Void) {
         return
     }
     let deliver = unwrapRedirect(url)
-    log("\(url.absoluteString) -> \(chosen) (\(app.lastPathComponent))")
+    log("\(redacted(url)) -> \(chosen) (\(app.lastPathComponent))")
     let configuration = NSWorkspace.OpenConfiguration()
     configuration.activates = true
     NSWorkspace.shared.open([deliver], withApplicationAt: app, configuration: configuration) { _, error in
