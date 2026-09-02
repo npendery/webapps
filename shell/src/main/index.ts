@@ -104,14 +104,17 @@ function createAppWindow(site: SiteConfig, store: StateStore, onClosed: () => vo
   const persist = () =>
     store.save({ bounds: window.getBounds(), tabs: tabs.urls(), activeIndex: tabs.activeIndex() });
 
+  const tabPreload = path.join(__dirname, '../preload/site.js');
   const tabs: TabManager = new TabManager({
     window,
     strip,
+    tabPreload,
     onChange: (list) => {
       strip.webContents.send('tabs:state', list);
       persist();
     },
-    onTabCreated: (wc) => attachNavigationPolicy(wc, site, { openTab: (url) => void tabs.newTab(url, true) }),
+    onTabCreated: (wc) =>
+      attachNavigationPolicy(wc, site, { openTab: (url) => void tabs.newTab(url, true), tabPreload }),
     onEmpty: () => window.close(),
   });
 

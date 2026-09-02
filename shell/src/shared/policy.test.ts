@@ -40,8 +40,13 @@ describe('decideWindowOpen', () => {
       url: 'https://mail.google.com/mail/u/0/#inbox',
     });
   });
-  test('allow-only host and non-http become popups', () => {
-    expect(decideWindowOpen(gmail, 'https://accounts.google.com/o/oauth2')).toEqual({ action: 'popup' });
+  test('allow-only sign-in host becomes a tab too', () => {
+    expect(decideWindowOpen(gmail, 'https://accounts.google.com/o/oauth2')).toEqual({
+      action: 'tab',
+      url: 'https://accounts.google.com/o/oauth2',
+    });
+  });
+  test('non-http (about:blank compose popouts) become popups', () => {
     expect(decideWindowOpen(gmail, 'about:blank')).toEqual({ action: 'popup' });
     expect(decideWindowOpen(gmail, '')).toEqual({ action: 'popup' });
   });

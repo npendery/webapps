@@ -28,14 +28,14 @@ export function restoreTabs(site: SiteRules, home: string, saved: string[]): str
 }
 
 /**
- * Non-http popups (Gmail opens about:blank then navigates) and allow-only
- * hosts (login flows that need window.opener) become real popup windows.
- * Match hosts become tabs. Everything else goes external.
+ * Non-http popups (Gmail opens about:blank then navigates, and relies on
+ * window.opener) become real popup windows. In-scope http URLs, including
+ * allow-only sign-in hosts, become tabs so they get the full tab treatment
+ * (navigation policy, chrome shim). Everything else goes external.
  */
 export function decideWindowOpen(site: SiteRules, rawUrl: string): OpenDecision {
   const url = normalizeUrl(rawUrl);
   if (!url) return { action: 'popup' };
-  if (isMatch(site, rawUrl)) return { action: 'tab', url: url.href };
-  if (isAllowed(site, rawUrl)) return { action: 'popup' };
+  if (isMatch(site, rawUrl) || isAllowed(site, rawUrl)) return { action: 'tab', url: url.href };
   return { action: 'external', url: url.href };
 }

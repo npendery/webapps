@@ -4,6 +4,8 @@ import type { SiteConfig } from '../shared/site';
 
 export interface NavigationHooks {
   openTab(url: string): void;
+  /** Preload for popup windows, same as for tabs. */
+  tabPreload: string;
   /** Defaults to shell.openExternal, i.e. the system default browser (the router). */
   openExternal?(url: string): void;
 }
@@ -30,7 +32,12 @@ export function attachNavigationPolicy(wc: WebContents, site: SiteConfig, hooks:
         openExternal(decision.url);
         return { action: 'deny' };
       case 'popup':
-        return { action: 'allow' };
+        return {
+          action: 'allow',
+          overrideBrowserWindowOptions: {
+            webPreferences: { preload: hooks.tabPreload, sandbox: true, contextIsolation: true },
+          },
+        };
     }
   });
 

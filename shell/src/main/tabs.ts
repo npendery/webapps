@@ -14,6 +14,8 @@ export interface TabInfo {
 export interface TabManagerOptions {
   window: BaseWindow;
   strip: WebContentsView;
+  /** Preload for site pages (shell/out/preload/site.js). */
+  tabPreload: string;
   onChange(tabs: TabInfo[]): void;
   onTabCreated(webContents: WebContents): void;
   onEmpty(): void;
@@ -66,7 +68,9 @@ export class TabManager {
   }
 
   newTab(url: string, activate = true): number {
-    const view = new WebContentsView({ webPreferences: { sandbox: true, contextIsolation: true } });
+    const view = new WebContentsView({
+      webPreferences: { sandbox: true, contextIsolation: true, preload: this.opts.tabPreload },
+    });
     const tab: Tab = { id: this.nextId++, view, title: url, url, favicon: null, loading: true };
     this.tabs.push(tab);
     this.wire(tab);
