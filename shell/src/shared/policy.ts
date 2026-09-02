@@ -19,12 +19,13 @@ export function decideNavigation(site: SiteRules, rawUrl: string): NavDecision {
 }
 
 /**
- * Tabs to open on launch. A saved URL that drifted out of scope (e.g. a
- * signed-out redirect to a marketing page) is replaced by the home URL.
+ * Tabs to open on launch. Only `match` URLs are worth restoring; a saved
+ * allow-only URL is a half-finished sign-in, and an out-of-scope one is a
+ * signed-out redirect to a marketing page. Both become the home URL.
  */
 export function restoreTabs(site: SiteRules, home: string, saved: string[]): string[] {
   if (saved.length === 0) return [home];
-  return saved.map((url) => (isMatch(site, url) || isAllowed(site, url) ? url : home));
+  return saved.map((url) => (isMatch(site, url) ? url : home));
 }
 
 /**

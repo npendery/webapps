@@ -22,11 +22,11 @@ describe('decideNavigation', () => {
 });
 
 describe('restoreTabs', () => {
-  test('keeps in-scope URLs, replaces out-of-scope ones with home, falls back to home when empty', () => {
+  test('keeps match URLs, replaces sign-in and out-of-scope ones with home, falls back to home when empty', () => {
     const home = 'https://mail.google.com/';
     expect(restoreTabs(gmail, home, ['https://mail.google.com/mail/u/0/#sent', 'https://accounts.google.com/x'])).toEqual([
       'https://mail.google.com/mail/u/0/#sent',
-      'https://accounts.google.com/x',
+      home,
     ]);
     expect(restoreTabs(gmail, home, ['https://workspace.google.com/products/gmail/'])).toEqual([home]);
     expect(restoreTabs(gmail, home, [])).toEqual([home]);
