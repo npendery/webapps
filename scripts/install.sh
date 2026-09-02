@@ -15,8 +15,13 @@ pnpm build "$@"
 pnpm -s gen-routes
 router/build.sh
 
+# Keep Spotlight from indexing build output, otherwise Launch Services learns
+# about dist/*.app and may launch a stale copy instead of /Applications.
+touch dist/.metadata_never_index
+
 for app in dist/*.app; do
   name="$(basename "$app")"
+  bundle_id="$(defaults read "$PWD/$app/Contents/Info.plist" CFBundleIdentifier)"
   if [ -d "/Applications/$name" ]; then
     existing="$(defaults read "/Applications/$name/Contents/Info.plist" CFBundleIdentifier 2>/dev/null || true)"
     case "$existing" in
@@ -24,7 +29,11 @@ for app in dist/*.app; do
       *) echo "refusing to overwrite /Applications/$name (bundle id '$existing' is not ours)" >&2; exit 1 ;;
     esac
   fi
-  pkill -f "/Applications/$name/Contents/MacOS/" 2>/dev/null || true
+  # Quit every running instance of this bundle id, wherever it was launched from;
+  # a stale instance would otherwise keep the single-instance lock and serve old code.
+  osascript -e "tell application id \"$bundle_id\" to quit" >/dev/null 2>&1 || true
+  sleep 1
+  pkill -f "/$name/Contents/MacOS/" 2>/dev/null || true
   rm -rf "/Applications/$name"
   ditto "$app" "/Applications/$name"
   # Make sure the bundle id resolves to the installed copy, not the one in dist/.

@@ -134,8 +134,14 @@ func redacted(_ url: URL) -> String {
     return url.query == nil ? "\(scheme)://\(host)\(url.path)" : "\(scheme)://\(host)\(url.path)?…"
 }
 
+/// Prefer the installed copy when Launch Services knows several bundles with
+/// this id (e.g. a build left in the repo's dist/ directory).
 func appURL(for bundleId: String) -> URL? {
-    NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleId)
+    let candidates = NSWorkspace.shared.urlsForApplications(withBundleIdentifier: bundleId)
+    if let installed = candidates.first(where: { $0.path.hasPrefix("/Applications/") }) {
+        return installed
+    }
+    return candidates.first ?? NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleId)
 }
 
 func open(_ url: URL, config: Config, completion: @escaping () -> Void) {
