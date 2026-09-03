@@ -32,7 +32,8 @@ function main(): void {
 
   app.setName(site.name);
   // Namespaced so it can never collide with another app's data dir (e.g. GitHub Desktop).
-  const dataDir = path.join(app.getPath('appData'), 'webapps', site.name);
+  // WEBAPPS_PROFILE lets an unpackaged dev copy run beside the installed app.
+  const dataDir = path.join(app.getPath('appData'), 'webapps', process.env.WEBAPPS_PROFILE ?? site.name);
   app.setPath('userData', dataDir);
   app.setPath('sessionData', dataDir);
   app.userAgentFallback = chromeUserAgent(process.versions.chrome);
@@ -114,7 +115,7 @@ function createAppWindow(site: SiteConfig, store: StateStore, onClosed: () => vo
       persist();
     },
     onTabCreated: (wc) =>
-      attachNavigationPolicy(wc, site, { openTab: (url) => void tabs.newTab(url, true), tabPreload }),
+      attachNavigationPolicy(wc, site, { adoptTab: (options) => tabs.adopt(options), tabPreload }),
     onEmpty: () => window.close(),
   });
 

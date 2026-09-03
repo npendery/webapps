@@ -1,4 +1,4 @@
-import { BaseWindow, WebContentsView, type WebContents } from 'electron';
+import { BaseWindow, WebContentsView, type BrowserWindowConstructorOptions, type WebContents } from 'electron';
 
 export const TAB_STRIP_HEIGHT = 38;
 
@@ -71,11 +71,28 @@ export class TabManager {
     const view = new WebContentsView({
       webPreferences: { sandbox: true, contextIsolation: true, preload: this.opts.tabPreload },
     });
-    const tab: Tab = { id: this.nextId++, view, title: url, url, favicon: null, loading: true };
+    const id = this.register(view, url, activate);
+    void view.webContents.loadURL(url);
+    return id;
+  }
+
+  /**
+   * Turns a page-initiated window.open into a tab. Called from
+   * setWindowOpenHandler's `createWindow`, so `options` carries the child
+   * webContents Chromium already created; Chromium navigates it, we do not.
+   * The caller's window.open therefore returns a real window proxy.
+   */
+  adopt(options: BrowserWindowConstructorOptions): WebContents {
+    const view = new WebContentsView(options);
+    this.register(view, '', true);
+    return view.webContents;
+  }
+
+  private register(view: WebContentsView, url: string, activate: boolean): number {
+    const tab: Tab = { id: this.nextId++, view, title: url || 'Loading…', url, favicon: null, loading: true };
     this.tabs.push(tab);
     this.wire(tab);
     this.opts.onTabCreated(view.webContents);
-    void view.webContents.loadURL(url);
     if (activate || this.activeId === null) this.activate(tab.id);
     else this.emit();
     return tab.id;

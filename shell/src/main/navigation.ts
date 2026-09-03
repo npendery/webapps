@@ -1,9 +1,13 @@
-import { shell, type WebContents } from 'electron';
+import { shell, type BrowserWindowConstructorOptions, type WebContents } from 'electron';
 import { decideNavigation, decideWindowOpen } from '../shared/policy';
 import type { SiteConfig } from '../shared/site';
 
 export interface NavigationHooks {
-  openTab(url: string): void;
+  /**
+   * Wraps a window.open child in a tab and returns its webContents
+   * (setWindowOpenHandler `createWindow` contract).
+   */
+  adoptTab(options: BrowserWindowConstructorOptions): WebContents;
   /** Preload for popup windows, same as for tabs. */
   tabPreload: string;
   /** Defaults to shell.openExternal, i.e. the system default browser (the router). */
@@ -26,8 +30,18 @@ export function attachNavigationPolicy(wc: WebContents, site: SiteConfig, hooks:
     const decision = decideWindowOpen(site, url);
     switch (decision.action) {
       case 'tab':
-        hooks.openTab(decision.url);
-        return { action: 'deny' };
+        // Not 'deny' + our own tab: that makes window.open return null and
+        // sites (Gmail notifications) report a blocked pop-up.
+        // Child web preferences come from this override, not from the opener,
+        // so the preload (chrome shim) must be passed explicitly.
+        return {
+          action: 'allow',
+          outlivesOpener: true,
+          overrideBrowserWindowOptions: {
+            webPreferences: { preload: hooks.tabPreload, sandbox: true, contextIsolation: true },
+          },
+          createWindow: (options) => hooks.adoptTab(options),
+        };
       case 'external':
         openExternal(decision.url);
         return { action: 'deny' };
