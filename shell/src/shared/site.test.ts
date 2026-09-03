@@ -13,7 +13,7 @@ describe('siteConfigs', () => {
     const configs = siteConfigs(readSitesFile(sitesPath));
     const gmail = configs.find((c) => c.id === 'gmail')!;
     expect(gmail.bundleId).toBe('dev.nick.webapps.gmail');
-    expect(gmail.fallbackBrowser).toBe('com.brave.browser');
+    expect(gmail.fallbackBrowser).toBe('com.apple.Safari');
     expect(gmail.home).toBe('https://mail.google.com/');
     expect(configs.map((c) => c.id)).toEqual(['gmail', 'calendar', 'github']);
   });
@@ -31,7 +31,7 @@ describe('resolveSiteConfig', () => {
         match: ['x.test'],
         allow: [],
         bundleId: 'dev.nick.webapps.x',
-        fallbackBrowser: 'com.brave.browser',
+        fallbackBrowser: 'com.apple.Safari',
       }),
     );
     const cfg = resolveSiteConfig({ resourcesPath: dir, siteId: 'gmail', sitesFile: sitesPath });

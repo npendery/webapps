@@ -3,6 +3,7 @@ import { execFile } from 'node:child_process';
 import path from 'node:path';
 import { parseHttpUrl } from '../shared/matcher';
 import { restoreTabs } from '../shared/policy';
+import { readInstalledFallback } from '../shared/routes-config';
 import { resolveSiteConfig, type SiteConfig } from '../shared/site';
 import { buildMenu, type Commands } from './menu';
 import { attachNavigationPolicy } from './navigation';
@@ -192,7 +193,8 @@ function commandsFor(site: SiteConfig, current: () => AppWindow | null): Command
     toggleDevTools: () => wc()?.toggleDevTools(),
     openInBrowser: () => {
       const url = wc()?.getURL();
-      if (url) execFile('open', ['-b', site.fallbackBrowser, url]);
+      // Bypass the router on purpose: it would just route back here.
+      if (url) execFile('open', ['-b', readInstalledFallback() ?? site.fallbackBrowser, url]);
     },
     copyUrl: () => {
       const url = wc()?.getURL();

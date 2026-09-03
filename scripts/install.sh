@@ -12,8 +12,37 @@ pnpm install
 [ -d node_modules/electron/dist ] || node node_modules/electron/install.js
 ls icons/*.icns >/dev/null 2>&1 || scripts/fetch-icons.sh
 pnpm build "$@"
-pnpm -s gen-routes
 router/build.sh
+ROUTER_ID="$(defaults read "$PWD/dist/LinkRouter.app/Contents/Info.plist" CFBundleIdentifier)"
+
+# Fallback browser = whatever handled https before LinkRouter took over. On a
+# reinstall LinkRouter is already the handler, so keep the previously recorded
+# fallback; with nothing recorded, gen-routes uses sites.json's fallbackBrowser.
+current_handler="$(/usr/bin/python3 - <<'PY'
+import os, plistlib
+path = os.path.expanduser("~/Library/Preferences/com.apple.LaunchServices/com.apple.launchservices.secure.plist")
+try:
+    handlers = plistlib.load(open(path, "rb")).get("LSHandlers", [])
+except Exception:
+    handlers = []
+print(next((h.get("LSHandlerRoleAll", "") for h in handlers if h.get("LSHandlerURLScheme") == "https"), ""))
+PY
+)"
+previous_fallback=""
+if [ -f "$HOME/.config/webapps/routes.json" ]; then
+  previous_fallback="$(/usr/bin/python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("fallback",""))' "$HOME/.config/webapps/routes.json")"
+fi
+if [ -n "$current_handler" ] && [ "$current_handler" != "$ROUTER_ID" ]; then
+  fallback="$current_handler"
+else
+  fallback="$previous_fallback"
+fi
+if [ -n "$fallback" ]; then
+  pnpm -s gen-routes --fallback "$fallback"
+else
+  pnpm -s gen-routes
+fi
+echo "fallback browser: $(/usr/bin/python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["fallback"])' dist/routes.json)"
 
 # Keep Spotlight from indexing build output, otherwise Launch Services learns
 # about dist/*.app and may launch a stale copy instead of /Applications.

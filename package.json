@@ -4,6 +4,12 @@
   "private": true,
   "description": "Site-specific Electron apps with a link router",
   "author": "Nick Pendery <nick@homebot.ai>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/npendery/webapps.git"
+  },
+  "homepage": "https://github.com/npendery/webapps#readme",
   "main": "shell/out/main/index.js",
   "scripts": {
     "test": "vitest run",

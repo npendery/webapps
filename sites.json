@@ -1,5 +1,5 @@
 {
-  "fallbackBrowser": "com.brave.browser",
+  "fallbackBrowser": "com.apple.Safari",
   "bundleIdPrefix": "dev.nick.webapps",
   "sites": [
     {

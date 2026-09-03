@@ -1,55 +1,125 @@
 # webapps
 
-Gmail, Google Calendar, and GitHub as standalone tabbed macOS apps, plus
-`LinkRouter.app`, a tiny default browser that sends links clicked anywhere
-on the Mac to the matching app. Anything that matches no app goes to Brave.
+Turn the websites you live in into standalone, tabbed macOS apps, and make
+links clicked anywhere on your Mac open in the right app instead of a browser
+tab. Ships with Gmail, Google Calendar, and GitHub; adding a site is one JSON
+entry.
+
+Two pieces:
+
+- **The shell.** One Electron app, built once per site from `sites.json`.
+  Real tabs (one `WebContentsView` per tab), restored on relaunch. Links to
+  other sites leave the app; links to a site that has its own app land there.
+- **LinkRouter.** A ~200-line Swift app that becomes your default browser. It
+  matches each URL against `~/.config/webapps/routes.json` and hands it to
+  the matching app, or to the browser that was your default before.
+
+## Requirements
+
+- macOS 13 or newer, Apple Silicon or Intel.
+- Xcode Command Line Tools (`xcode-select --install`) for `swiftc`.
+- Node 24 and pnpm 10. `mise.toml` pins both if you use [mise](https://mise.jdx.dev).
 
 ## Install
 
+    git clone https://github.com/npendery/webapps && cd webapps
     scripts/install.sh
 
-Builds all apps and the router, copies them into `/Applications`, writes
-`~/.config/webapps/routes.json`, and asks macOS to make LinkRouter the
-default browser (confirm the dialog). Sign in to Google once in Gmail and
-once in Google Calendar; each app has its own cookie store.
+This builds the apps and the router, copies them into `/Applications`, writes
+`~/.config/webapps/routes.json` with your current default browser as the
+fallback, and asks macOS to make LinkRouter the default browser (confirm the
+dialog). Sign in to each app once; each has its own cookie store.
+
+The apps are ad-hoc signed. They run fine locally; they are not meant to be
+distributed as built binaries.
 
 ## Daily use
 
-- Cmd+T new tab, Cmd+W close tab, Cmd+1..9 select tab, Cmd+Shift+[ / ]
-  previous/next tab.
-- Cmd+[ / ] back/forward, Cmd+R reload, Cmd+Shift+H home.
-- Cmd+Shift+O opens the current page in Brave. Cmd+Shift+C copies its URL.
-- Links to other sites open in Brave (via LinkRouter). Links to a site that
-  has its own app open there.
-- Quitting and relaunching restores your tabs.
+| Keys | Action |
+|---|---|
+| Cmd+T / Cmd+W | New tab (home page) / close tab |
+| Cmd+1..9, Cmd+Shift+[ / ] | Select tab, previous / next tab |
+| Cmd+[ / ] | Back / forward |
+| Cmd+R, Cmd+Shift+H | Reload, home |
+| Cmd+Shift+O | Open current page in your regular browser |
+| Cmd+Shift+C | Copy current URL |
+| Cmd+Plus / Cmd+- / Cmd+0 | Zoom |
+
+Quitting and relaunching restores your tabs. Web notifications work as native
+notifications; clicking one opens the item in a tab.
 
 ## Adding a site
 
-1. Add an entry to `sites.json` (`id`, `name`, `home`, `match`, `allow`,
-   `icon`). `match` hosts are routed to the app and stay in it; `allow`
-   hosts stay in the app (login pages) but are not routed to it.
-   `*.example.com` matches subdomains only; list the apex separately.
-2. `scripts/fetch-icons.sh` then `scripts/install.sh`.
+1. Add an entry to `sites.json`:
 
-## How routing works
+   ```json
+   {
+     "id": "linear",
+     "name": "Linear",
+     "home": "https://linear.app/",
+     "match": ["linear.app", "*.linear.app"],
+     "allow": ["accounts.google.com"],
+     "icon": "https://linear.app/static/apple-touch-icon.png"
+   }
+   ```
 
-macOS has one default browser slot. `LinkRouter.app` occupies it, reads
-`~/.config/webapps/routes.json`, and opens each URL with the matching app's
-bundle id via Launch Services, or with the fallback browser. It logs every
-decision to `~/Library/Logs/LinkRouter.log`. Gmail's `google.com/url?q=`
-redirector is unwrapped before matching.
+   - `match`: hosts the router sends to this app, and that stay inside it.
+   - `allow`: hosts that stay inside the app but are **not** routed to it.
+     Put your identity provider and sign-in hosts here. A pattern may carry a
+     path prefix (`www.google.com/a/`). `*.example.com` matches subdomains
+     only; list the apex separately.
+   - Exactly one site may `match` a given host; the tests enforce it.
+2. `scripts/fetch-icons.sh` then `scripts/install.sh linear` (no argument
+   rebuilds every site).
 
-    dist/LinkRouter.app/Contents/MacOS/LinkRouter --dry-run https://github.com/x
+Bundle ids are `<bundleIdPrefix>.<id>`; change `bundleIdPrefix` in
+`sites.json` if you fork.
+
+### Sign-in hops
+
+Single sign-on bounces through several hosts. Anything not in `match` or
+`allow` is handed to your regular browser mid-flow and the sign-in breaks.
+When that happens, the last line of `~/Library/Logs/LinkRouter.log` names the
+host to add to `allow`. The shipped Google entries already cover Google
+accounts, Okta (`*.okta.com`), and the Google Workspace SAML endpoint
+(`www.google.com/a/`).
+
+## How it works
+
+- **Routing.** macOS has one default browser slot. LinkRouter occupies it,
+  reads `routes.json`, unwraps Gmail's `google.com/url?q=` redirector, and
+  opens the URL with the matching app's bundle id via Launch Services. Every
+  decision is logged (scheme, host and path only) to
+  `~/Library/Logs/LinkRouter.log`.
+- **Inside an app.** Top-level navigations to out-of-scope hosts are cancelled
+  and sent to the system default browser, which is the router, so the link
+  still ends up in the right place. `window.open` to an in-scope URL becomes
+  a tab (the page gets a real window proxy back, so pop-up detection stays
+  quiet); non-http popups such as Gmail's compose pop-out stay real windows.
+- **Google sign-in.** Electron's `window.chrome` is empty because it ships
+  Chromium without the `chrome/` layer, and Google's sign-in rejects that as
+  an embedded browser. A sandboxed preload restores the members plain
+  Chromium exposes before any page script runs. The user agent is plain
+  Chrome for the bundled Chromium version.
 
 ## Development
 
     pnpm install
-    pnpm test            # matcher, policy, state tests
-    router/test.sh       # same fixtures through the Swift router
-    SITE=github pnpm dev # run one site unpackaged
-    pnpm build [siteId]  # dist/<Name>.app
+    pnpm test                                   # matcher, policy, state, preload tests
+    router/build.sh && router/test.sh           # same URL fixtures through the Swift router
+    SITE=github pnpm dev                        # run one site unpackaged
+    WEBAPPS_SITE=gmail WEBAPPS_PROFILE=dev pnpm exec electron . --remote-debugging-port=9333
+                                                # run beside the installed app, with CDP
+    pnpm build [siteId]                         # dist/<Name>.app
 
-## Undo
+Design notes and the implementation plan live under `docs/superpowers/`.
 
-System Settings → Desktop & Dock → Default web browser → Brave. Delete the
-apps from `/Applications` and `~/Library/Application Support/webapps/`.
+## Uninstall
+
+System Settings → Desktop & Dock → Default web browser → pick your browser.
+Then delete the apps from `/Applications`, `~/.config/webapps`, and
+`~/Library/Application Support/webapps/`.
+
+## License
+
+MIT
