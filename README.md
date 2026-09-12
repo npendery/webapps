@@ -45,6 +45,10 @@ distributed as built binaries.
 | Cmd+Shift+C | Copy current URL |
 | Cmd+Plus / Cmd+- / Cmd+0 | Zoom |
 
+Right-clicking a page gives back / forward / reload, or link and editing
+actions when the click lands on a link or in a text field. Pages that ship
+their own context menu keep it.
+
 Quitting and relaunching restores your tabs. Web notifications work as native
 notifications; clicking one opens the item in a tab.
 
