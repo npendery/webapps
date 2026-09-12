@@ -1,4 +1,14 @@
-import { app, BaseWindow, clipboard, ipcMain, Menu, shell, WebContentsView, type WebContents } from 'electron';
+import {
+  app,
+  BaseWindow,
+  clipboard,
+  ipcMain,
+  Menu,
+  shell,
+  WebContentsView,
+  type IpcMainEvent,
+  type WebContents,
+} from 'electron';
 import { execFile } from 'node:child_process';
 import path from 'node:path';
 import { parseHttpUrl } from '../shared/matcher';
@@ -128,6 +138,8 @@ function createAppWindow(site: SiteConfig, store: StateStore, onClosed: () => vo
     'tabs:activate': (_e: never, id: never) => tabs.activate(id as number),
     'tabs:close': (_e: never, id: never) => tabs.close(id as number),
     'tabs:new': () => void tabs.newTab(site.home, true),
+    // Sent by the site preload when a horizontal overscroll commits.
+    'nav:history': (event: never, direction: never) => goHistory((event as IpcMainEvent).sender, direction),
   };
   for (const [channel, handler] of Object.entries(handlers)) ipcMain.on(channel, handler as never);
 
@@ -196,6 +208,13 @@ function attachContextMenu(wc: WebContents, window: BaseWindow, site: SiteConfig
     // page-relative coordinates past the tab strip.
     Menu.buildFromTemplate(template).popup({ window, frame: params.frame ?? undefined });
   });
+}
+
+/** Navigates the tab the request came from, not the active one — they can differ. */
+function goHistory(sender: WebContents, direction: unknown): void {
+  const history = sender.navigationHistory;
+  if (direction === 'back' && history.canGoBack()) history.goBack();
+  if (direction === 'forward' && history.canGoForward()) history.goForward();
 }
 
 function commandsFor(site: SiteConfig, current: () => AppWindow | null): Commands {
