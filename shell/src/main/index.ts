@@ -1,10 +1,11 @@
-import { app, BaseWindow, clipboard, ipcMain, Menu, WebContentsView } from 'electron';
+import { app, BaseWindow, clipboard, ipcMain, Menu, shell, WebContentsView, type WebContents } from 'electron';
 import { execFile } from 'node:child_process';
 import path from 'node:path';
 import { parseHttpUrl } from '../shared/matcher';
-import { restoreTabs } from '../shared/policy';
+import { decideWindowOpen, restoreTabs } from '../shared/policy';
 import { readInstalledFallback } from '../shared/routes-config';
 import { resolveSiteConfig, type SiteConfig } from '../shared/site';
+import { contextMenuTemplate } from './context-menu';
 import { buildMenu, type Commands } from './menu';
 import { attachNavigationPolicy } from './navigation';
 import { createStateStore, type StateStore } from './state';
@@ -115,8 +116,10 @@ function createAppWindow(site: SiteConfig, store: StateStore, onClosed: () => vo
       strip.webContents.send('tabs:state', list);
       persist();
     },
-    onTabCreated: (wc) =>
-      attachNavigationPolicy(wc, site, { adoptTab: (options) => tabs.adopt(options), tabPreload }),
+    onTabCreated: (wc) => {
+      attachNavigationPolicy(wc, site, { adoptTab: (options) => tabs.adopt(options), tabPreload });
+      attachContextMenu(wc, window, site, tabs);
+    },
     onEmpty: () => window.close(),
   });
 
@@ -157,6 +160,42 @@ function createAppWindow(site: SiteConfig, store: StateStore, onClosed: () => vo
       app.focus({ steal: true });
     },
   };
+}
+
+/**
+ * Electron ships no default context menu, so pages get none until we build one.
+ * The page keeps its own: Chromium only emits 'context-menu' when the page has
+ * not called preventDefault() on the DOM event.
+ */
+function attachContextMenu(wc: WebContents, window: BaseWindow, site: SiteConfig, tabs: TabManager): void {
+  wc.on('context-menu', (_event, params) => {
+    const template = contextMenuTemplate(
+      {
+        canGoBack: wc.navigationHistory.canGoBack(),
+        canGoForward: wc.navigationHistory.canGoForward(),
+        // Kept raw so Copy Link yields exactly what the page links to.
+        linkUrl: parseHttpUrl(params.linkURL) ? params.linkURL : '',
+        isEditable: params.isEditable,
+        selectionText: params.selectionText,
+      },
+      {
+        back: () => wc.navigationHistory.goBack(),
+        forward: () => wc.navigationHistory.goForward(),
+        reload: () => wc.reload(),
+        // Same policy as a target=_blank click: in scope becomes a background
+        // tab, out of scope goes to the router.
+        openLinkInNewTab: (url) => {
+          const decision = decideWindowOpen(site, url);
+          if (decision.action === 'tab') tabs.newTab(decision.url, false);
+          else if (decision.action === 'external') void shell.openExternal(decision.url);
+        },
+        copyLink: (url) => clipboard.writeText(url),
+      },
+    );
+    // No x/y: Electron then pops at the cursor, which saves translating the
+    // page-relative coordinates past the tab strip.
+    Menu.buildFromTemplate(template).popup({ window, frame: params.frame ?? undefined });
+  });
 }
 
 function commandsFor(site: SiteConfig, current: () => AppWindow | null): Commands {
