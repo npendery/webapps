@@ -18,6 +18,8 @@ export interface TabManagerOptions {
   tabPreload: string;
   onChange(tabs: TabInfo[]): void;
   onTabCreated(webContents: WebContents): void;
+  /** Fires before the active tab changes, while the outgoing one is still attached. */
+  onBeforeActivate(): void;
   onEmpty(): void;
 }
 
@@ -101,6 +103,7 @@ export class TabManager {
   activate(id: number): void {
     const next = this.tabs.find((t) => t.id === id);
     if (!next || next.id === this.activeId) return;
+    this.opts.onBeforeActivate();
     const current = this.activeTab();
     if (current) this.opts.window.contentView.removeChildView(current.view);
     this.activeId = next.id;
@@ -129,6 +132,7 @@ export class TabManager {
     const [tab] = this.tabs.splice(index, 1);
     const wasActive = tab.id === this.activeId;
     if (wasActive) {
+      this.opts.onBeforeActivate();
       this.opts.window.contentView.removeChildView(tab.view);
       this.activeId = null;
     }
