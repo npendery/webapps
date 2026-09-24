@@ -16,6 +16,9 @@ export interface Commands {
   toggleDevTools(): void;
   openInBrowser(): void;
   copyUrl(): void;
+  find(): void;
+  findNext(): void;
+  findPrevious(): void;
 }
 
 export function buildMenu(appName: string, c: Commands): Menu {
@@ -62,6 +65,15 @@ export function buildMenu(appName: string, c: Commands): Menu {
         { role: 'pasteAndMatchStyle' },
         { role: 'delete' },
         { role: 'selectAll' },
+        { type: 'separator' },
+        {
+          label: 'Find',
+          submenu: [
+            { label: 'Find…', accelerator: 'Cmd+F', click: c.find },
+            { label: 'Find Next', accelerator: 'Cmd+G', click: c.findNext },
+            { label: 'Find Previous', accelerator: 'Cmd+Shift+G', click: c.findPrevious },
+          ],
+        },
       ],
     },
     {

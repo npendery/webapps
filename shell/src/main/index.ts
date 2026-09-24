@@ -16,6 +16,7 @@ import { decideWindowOpen, restoreTabs } from '../shared/policy';
 import { readInstalledFallback } from '../shared/routes-config';
 import { resolveSiteConfig, type SiteConfig } from '../shared/site';
 import { contextMenuTemplate } from './context-menu';
+import { FindBar } from './find';
 import { buildMenu, type Commands } from './menu';
 import { attachNavigationPolicy } from './navigation';
 import { createStateStore, type StateStore } from './state';
@@ -25,6 +26,7 @@ import { chromeUserAgent } from './user-agent';
 interface AppWindow {
   window: BaseWindow;
   tabs: TabManager;
+  findBar: FindBar;
   openUrl(url: string): void;
   focus(): void;
 }
@@ -118,6 +120,12 @@ function createAppWindow(site: SiteConfig, store: StateStore, onClosed: () => vo
     store.save({ bounds: window.getBounds(), tabs: tabs.urls(), activeIndex: tabs.activeIndex() });
 
   const tabPreload = path.join(__dirname, '../preload/site.js');
+  const findBar = new FindBar(
+    window,
+    path.join(__dirname, '../preload/findbar.js'),
+    path.join(app.getAppPath(), 'shell/ui/findbar.html'),
+    () => tabs.activeWebContents,
+  );
   const tabs: TabManager = new TabManager({
     window,
     strip,
@@ -130,6 +138,8 @@ function createAppWindow(site: SiteConfig, store: StateStore, onClosed: () => vo
       attachNavigationPolicy(wc, site, { adoptTab: (options) => tabs.adopt(options), tabPreload });
       attachContextMenu(wc, window, site, tabs);
     },
+    // The bar searches one tab; switching tabs closes it, like Safari.
+    onBeforeActivate: () => findBar.hide(),
     onEmpty: () => window.close(),
   });
 
@@ -138,6 +148,9 @@ function createAppWindow(site: SiteConfig, store: StateStore, onClosed: () => vo
     'tabs:activate': (_e: never, id: never) => tabs.activate(id as number),
     'tabs:close': (_e: never, id: never) => tabs.close(id as number),
     'tabs:new': () => void tabs.newTab(site.home, true),
+    'find:search': (_e: never, query: never) => findBar.search(String(query)),
+    'find:step': (_e: never, forward: never) => findBar.step(Boolean(forward)),
+    'find:close': () => findBar.hide(),
     // Sent by the site preload when a horizontal overscroll commits.
     'nav:history': (event: never, direction: never) => goHistory((event as IpcMainEvent).sender, direction),
   };
@@ -154,6 +167,7 @@ function createAppWindow(site: SiteConfig, store: StateStore, onClosed: () => vo
   window.on('closed', () => {
     for (const channel of Object.keys(handlers)) ipcMain.removeAllListeners(channel);
     tabs.destroy();
+    findBar.destroy();
     onClosed();
   });
   window.show();
@@ -161,6 +175,7 @@ function createAppWindow(site: SiteConfig, store: StateStore, onClosed: () => vo
   return {
     window,
     tabs,
+    findBar,
     openUrl(url) {
       tabs.newTab(url, true);
       this.focus();
@@ -254,6 +269,9 @@ function commandsFor(site: SiteConfig, current: () => AppWindow | null): Command
       // Bypass the router on purpose: it would just route back here.
       if (url) execFile('open', ['-b', readInstalledFallback() ?? site.fallbackBrowser, url]);
     },
+    find: () => ensure()?.findBar.show(),
+    findNext: () => current()?.findBar.step(true),
+    findPrevious: () => current()?.findBar.step(false),
     copyUrl: () => {
       const url = wc()?.getURL();
       if (url) clipboard.writeText(url);
